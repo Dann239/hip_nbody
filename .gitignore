@@ -330,8 +330,7 @@ ASALocalRun/
 .mfractor/
 
 # Custom
-key_public
-*.ppk
+ssh/
 
 hip/*.out
 hip/*.h
