@@ -330,4 +330,5 @@ ASALocalRun/
 .mfractor/
 
 #
+key_public
 *.ppk
