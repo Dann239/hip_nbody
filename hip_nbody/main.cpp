@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 static double* pos[3];
@@ -42,11 +43,33 @@ void randomize() {
 	set_vel(vel);
 }
 
+void dump() {
+	get_pos(pos);
+	get_vel(vel);
+	ofstream out("data/dump.dat", ios::binary);
+	for (int i = 0; i < 3; i++) {
+		out.write((char*)pos[i], AMOUNT * sizeof(double));
+		out.write((char*)vel[i], AMOUNT * sizeof(double));
+	}
+}
+void load() {
+	ifstream in("data/dump.dat", ios::binary);
+	if (!in.fail()) {
+		for (int i = 0; i < 3; i++) {
+			in.read((char*)pos[i], AMOUNT * sizeof(double));
+			in.read((char*)vel[i], AMOUNT * sizeof(double));
+		}
+		set_pos(pos);
+		set_vel(vel);
+	}
+}
+
 int main() {
 	cpu_alloc();
 	gpu_alloc();
 	randomize();
 	get_pos(pos);
+	dump();
 	gpu_dealloc();
 	print_err();
 	return 0;

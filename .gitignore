@@ -336,3 +336,5 @@ hip/*.out
 hip/*.h
 hip/*.cpp
 hip/*.cuh
+data/*.dat
+data/*.csv

@@ -83,7 +83,6 @@
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="butchers.cuh" />
     <ClInclude Include="kernel.h" />
   </ItemGroup>
   <ItemGroup>
