@@ -329,6 +329,11 @@ ASALocalRun/
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
 
-#
+# Custom
 key_public
 *.ppk
+
+hip/*.out
+hip/*.h
+hip/*.cpp
+hip/*.cuh
