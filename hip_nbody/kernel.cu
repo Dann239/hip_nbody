@@ -10,39 +10,39 @@
 #include <iostream>
 using namespace std;
 
-static double* p[3];
-static double* v[3];
+static double* pos[3];
+static double* vel[3];
 
 void gpu_alloc() {
 	for (int i = 0; i < 3; i++) {
-		cudaMalloc(&p[i], AMOUNT * sizeof(double));
-		cudaMalloc(&v[i], AMOUNT * sizeof(double));
+		cudaMalloc(&pos[i], AMOUNT * sizeof(double));
+		cudaMalloc(&vel[i], AMOUNT * sizeof(double));
 	}
 }
 void gpu_dealloc() {
 	for (int i = 0; i < 3; i++) {
-		cudaFree(p[i]);
-		cudaFree(v[i]);
+		cudaFree(pos[i]);
+		cudaFree(vel[i]);
 	}
 	cudaDeviceReset();
 }
 
-void get_pos(double* _p[3]) {
+void get_pos(double* _pos[3]) {
 	for(int i = 0; i < 3; i++)
-		cudaMemcpy(_p[i], p[i], AMOUNT * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(_pos[i], pos[i], AMOUNT * sizeof(double), cudaMemcpyDeviceToHost);
 }
-void get_vel(double* _v[3]) {
+void get_vel(double* _vel[3]) {
 	for (int i = 0; i < 3; i++)
-		cudaMemcpy(_v[i], v[i], AMOUNT * sizeof(double), cudaMemcpyDeviceToHost);
+		cudaMemcpy(_vel[i], vel[i], AMOUNT * sizeof(double), cudaMemcpyDeviceToHost);
 }
 
-void set_pos(double* _p[3]) {
+void set_pos(double* _pos[3]) {
 	for (int i = 0; i < 3; i++)
-		cudaMemcpy(p[i], _p[i], AMOUNT * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy(pos[i], _pos[i], AMOUNT * sizeof(double), cudaMemcpyHostToDevice);
 }
-void set_vel(double* _v[3]) {
+void set_vel(double* _vel[3]) {
 	for (int i = 0; i < 3; i++)
-		cudaMemcpy(v[i], _v[i], AMOUNT * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy(vel[i], _vel[i], AMOUNT * sizeof(double), cudaMemcpyHostToDevice);
 }
 
 void print_err() {
