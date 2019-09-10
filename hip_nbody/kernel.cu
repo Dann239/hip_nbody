@@ -2,6 +2,12 @@
 
 #ifndef __HIPCC__
 #include "device_launch_parameters.h"
+#include "device_functions.h"
+#include "cuda_runtime_api.h"
+#endif
+
+#ifdef __INTELLISENSE__
+void __syncthreads() {}
 #endif
 
 #include "kernel.h"
@@ -99,9 +105,35 @@ __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
 
+
+#define GPU_PAIR_INTERACTION_WRAPPER( __CODE__ ) 				\
+																\
+	int tid = threadIdx.x,										\
+	bid = blockIdx.x,											\
+	ind = bid * BLOCK_SIZE + tid;								\
+																\
+	double3 p = 1. / SIZE * POS(ind),							\
+	v = VEL(ind);												\
+																\
+	__shared__ double3 _pos[BLOCK_SIZE];						\
+	for (int i = 0; i < GRID_SIZE; i++) {						\
+																\
+		__syncthreads();										\
+		_pos[tid] = 1. / SIZE * POS(i * BLOCK_SIZE + tid);		\
+		__syncthreads();										\
+																\
+		for (int j = 0; j < BLOCK_SIZE; j++) {					\
+			double3 _p = _pos[j];								\
+			if (i != bid || j != tid) {							\
+				__CODE__										\
+			}													\
+		}														\
+	}															\
+
 constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
-__device__ double3 lj_a(double3 a, double3 d) {
+__device__ double3 lj_a(double3 a, double3 p, double3 _p) {
+	double3 d = p - _p;
 	d -= round(d);
 
 	double r2 = hypot2(d) * ss_ss,
@@ -113,7 +145,8 @@ __device__ double3 lj_a(double3 a, double3 d) {
 
 	return a + (_2r_14__r_8 * d);
 }
-__device__ double lj_e(double e, double3 d) {
+__device__ double lj_e(double e, double3 p, double3 _p) {
+	double3 d = p - _p;
 	d -= round(d);
 
 	double r2 = hypot2(d) * ss_ss,
@@ -126,29 +159,8 @@ __device__ double lj_e(double e, double3 d) {
 
 __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz) {
 	double3 a = { 0., 0., 0. };
-	
-	int tid = threadIdx.x,
-		bid = blockIdx.x,
-		ind = bid * BLOCK_SIZE + tid;
 
-	double3 p = 1. / SIZE * POS(ind),
-		v = VEL(ind);
-
-	__shared__ double3 _pos[BLOCK_SIZE];
-	for (int i = 0; i < GRID_SIZE; i++) {
-		
-		__syncthreads();
-		_pos[tid] = 1. / SIZE * POS(i * BLOCK_SIZE + tid);
-		__syncthreads();
-
-		for (int j = 0; j < BLOCK_SIZE; j++) {
-			double3 _p = _pos[j];
-			if (i != bid || j != tid) {
-				a = lj_a(a, p - _p);
-			}
-		}
-
-	}
+	GPU_PAIR_INTERACTION_WRAPPER(a = lj_a(a, p, _p);)
 
 	v += ((4. * EPSILON / SIGMA / SIGMA / M) * (12. * SIZE) * TIME_STEP) * a;
 	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
@@ -159,28 +171,7 @@ __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx
 __global__ void energy_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* energy) {
 	double e = 0;
 	
-	int tid = threadIdx.x,
-		bid = blockIdx.x,
-		ind = bid * BLOCK_SIZE + tid;
-	
-
-	double3 p = 1. / SIZE * POS(ind),
-		v = VEL(ind);
-
-	__shared__ double3 _pos[BLOCK_SIZE];
-	for (int i = 0; i < GRID_SIZE; i++) {
-
-		__syncthreads();
-		_pos[tid] = 1. / SIZE * POS(i * BLOCK_SIZE + tid);
-		__syncthreads();
-
-		for (int j = 0; j < BLOCK_SIZE; j++) {
-			if (i != bid || j != tid) {
-				e = lj_e(e, p - _pos[j]);
-			}
-		}
-
-	}
+	GPU_PAIR_INTERACTION_WRAPPER(e = lj_e(e, p, _p);)
 
 	energy[ind] = e / 2. + M * hypot2(v) / 2.;
 }
@@ -192,7 +183,9 @@ double get_energy() {
 		return total_energy;
 	energy_valid = true;
 
+#ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], energy);
+#endif 
 
 	static double _energy[AMOUNT];
 	total_energy = 0;
@@ -206,6 +199,10 @@ double get_energy() {
 }
 
 void euler_step() {
+
+#ifndef __INTELLISENSE__
 	euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[0], pos[1], pos[2], vel[0], vel[1], vel[2]);
+#endif
+
 	pos_valid = vel_valid = energy_valid = false;
 }
