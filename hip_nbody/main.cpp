@@ -16,7 +16,7 @@ void cpu_alloc() {
 }
 
 void randomize() {
-	int grid_size = (int)(cbrt(AMOUNT) + 1);
+	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
 	vector<vector<vector<bool> > > grid(grid_size, vector<vector<bool> >(grid_size, vector<bool>(grid_size, false)));
 	for (int i = 0; i < grid_size; i++)
 		for (int j = 0; j < grid_size; j++)
@@ -68,9 +68,17 @@ int main() {
 	cpu_alloc();
 	gpu_alloc();
 	randomize();
-	get_pos(pos);
-	dump();
-	gpu_dealloc();
+	
+	cout << get_energy() << endl;
 	print_err();
+	euler_step();
+	print_err();
+	cout << get_energy() << endl;
+
+	get_pos(pos);
+	get_vel(vel);
+	print_err();
+
+	gpu_dealloc();
 	return 0;
 }

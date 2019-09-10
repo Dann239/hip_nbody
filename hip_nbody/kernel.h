@@ -9,6 +9,9 @@ void get_vel(double* _vel[3]);
 void set_pos(double* _pos[3]);
 void set_vel(double* _vel[3]);
 
+double get_energy();
+void euler_step();
+
 void print_err();
 
 constexpr double _cbrt(double a) {
@@ -44,7 +47,6 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-
 constexpr int GRID_SIZE = 1 << 7;
 constexpr int BLOCK_SIZE = 1 << 7;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
@@ -67,9 +69,7 @@ constexpr double N = P / (K * T);//25.7444e27;
 constexpr double V = _sqrt(3 * K * T / M);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
-constexpr int SCREEN_SIZE = 500;
-constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 
-constexpr double TIME_STEP = 5e-15;
+constexpr double TIME_STEP = 1e-17;
 constexpr double RENDER_STEP = TIME_STEP * 50;
 constexpr double TOTAL_TIME = RENDER_STEP * 10;
