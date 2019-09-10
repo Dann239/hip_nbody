@@ -2,7 +2,6 @@
 
 #ifndef __HIPCC__
 #include "device_launch_parameters.h"
-#include "device_functions.h"
 #include "cuda_runtime_api.h"
 #endif
 
@@ -77,29 +76,31 @@ __device__ double hypot2(double3 p) {
 __device__ double3 round(double3 a) {
 	return { round(a.x),round(a.y),round(a.z) };
 }
+#ifndef __HIPCC__
 __device__ double3& operator-= (double3& a, double3 b) {
 	a.x -= b.x;
 	a.y -= b.y;
 	a.z -= b.z;
 	return a;
 }
-__device__ double3 operator- (double3 a, double3 b) {
-	return { a.x - b.x, a.y - b.y, a.z - b.z };
+__device__ double3& operator+=(double3& a, double3 b) {
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	return a;
 }
+#endif
 __device__ double3& operator*= (double3& a, double b) {
 	a.x *= b;
 	a.y *= b;
 	a.z *= b;
 	return a;
 }
+__device__ double3 operator- (double3 a, double3 b) {
+	return { a.x - b.x, a.y - b.y, a.z - b.z };
+}
 __device__ double3 operator* (double b, double3 a) {
 	return { a.x * b, a.y * b, a.z * b };
-}
-__device__ double3& operator+=(double3& a, double3 b) {
-	a.x += b.x;
-	a.y += b.y;
-	a.z += b.z;
-	return a;
 }
 __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
@@ -167,7 +168,6 @@ __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx
 	v *= TIME_STEP;
 	posx[ind] += v.x; posy[ind] += v.y, posz[ind] += v.z;
 }
-
 __global__ void energy_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* energy) {
 	double e = 0;
 	
@@ -197,7 +197,6 @@ double get_energy() {
 
 	return total_energy;
 }
-
 void euler_step() {
 
 #ifndef __INTELLISENSE__
