@@ -332,9 +332,9 @@ ASALocalRun/
 # Custom
 ssh/
 
-hip/*.out
-hip/*.h
-hip/*.cpp
-hip/*.cuh
-data/*.dat
-data/*.csv
+hip_nbody/hip/*.out
+hip_nbody/hip/*.h
+hip_nbody/hip/*.cpp
+hip_nbody/hip/*.cuh
+hip_nbody/data/*.dat
+hip_nbody/data/*.csv

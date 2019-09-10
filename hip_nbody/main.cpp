@@ -28,7 +28,7 @@ void randomize() {
 		for (int j = 0; j < 3; j++) {
 			p[j] = rand() % grid_size;
 			pos[j][i] = p[j] * SIZE / grid_size;
-			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * SPEED;
+			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * V;
 		}
 
 		if (grid[p[0]][p[1]][p[2]]) {
