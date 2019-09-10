@@ -133,7 +133,7 @@ __device__ double3 operator+ (double3 a, double3 b) {
 
 constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
-__device__ double3 lj_a(double3 a, double3 p, double3 _p) {
+__device__ void get_a(double3& a_lj, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
 
@@ -144,9 +144,9 @@ __device__ double3 lj_a(double3 a, double3 p, double3 _p) {
 		r_8 = r_4 * r_4,
 		_2r_14__r_8 = (r_6 - .5) * r_8;
 
-	return a + (_2r_14__r_8 * d);
+	a_lj += (_2r_14__r_8 * d);
 }
-__device__ double lj_e(double e, double3 p, double3 _p) {
+__device__ void get_e(double& e_lj, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
 
@@ -155,25 +155,26 @@ __device__ double lj_e(double e, double3 p, double3 _p) {
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
 
-	return e + (r_6 - 1) * r_6;
+	e_lj += (r_6 - 1) * r_6;
 }
 
+
 __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz) {
-	double3 a = { 0., 0., 0. };
+	double3 a_lj = { 0., 0., 0. };
+	
+	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, p, _p);)
 
-	GPU_PAIR_INTERACTION_WRAPPER(a = lj_a(a, p, _p);)
-
-	v += ((4. * EPSILON / SIGMA / SIGMA / M) * (12. * SIZE) * TIME_STEP) * a;
+	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj;
 	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
 	v *= TIME_STEP;
 	posx[ind] += v.x; posy[ind] += v.y, posz[ind] += v.z;
 }
 __global__ void energy_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* energy) {
-	double e = 0;
+	double e_lj = 0;
 	
-	GPU_PAIR_INTERACTION_WRAPPER(e = lj_e(e, p, _p);)
+	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, p, _p);)
 
-	energy[ind] = e / 2. + M * hypot2(v) / 2.;
+	energy[ind] = 2. * EPSILON * e_lj + M * hypot2(v) / 2.;
 }
 
 

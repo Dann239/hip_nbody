@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <time.h>
 using namespace std;
 
 static double* pos[3];
@@ -68,17 +69,15 @@ int main() {
 	cpu_alloc();
 	gpu_alloc();
 	randomize();
+	const int steps = 10;
+	long long t = clock();
+	for (int i = 0; i < steps; i++) {
+		euler_step();
+	}
+	cout << get_energy() << endl;
+
+	cout << (27. * AMOUNT * AMOUNT * steps / ((long long)(clock() - t) / CLOCKS_PER_SEC) * 1e-12) << "TFlops" << endl;
 	
-	cout << get_energy() << endl;
-	print_err();
-	euler_step();
-	print_err();
-	cout << get_energy() << endl;
-
-	get_pos(pos);
-	get_vel(vel);
-	print_err();
-
 	gpu_dealloc();
 	return 0;
 }
