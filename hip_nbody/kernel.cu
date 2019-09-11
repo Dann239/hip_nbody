@@ -20,11 +20,28 @@ static double* vel[3];
 static double* acc[3];
 static double* energy;
 
+struct vec {
+	double* v[3];
+	__device__ void set(int i, double3 p) {
+		v[X][i] = p.x;
+		v[Y][i] = p.y;
+		v[Z][i] = p.z;
+	}
+	__device__ double3 get(int i) {
+		return double3({ v[X][i],v[Y][i],v[Z][i] });
+	}
+	vec(double* p[3]) {
+		for (int i = 0; i < 3; i++)
+			v[i] = p[i];
+	}
+};
+
 void gpu_alloc() {
 	for (int i = 0; i < 3; i++) {
 		cudaMalloc(&pos[i], AMOUNT * sizeof(double));
 		cudaMalloc(&vel[i], AMOUNT * sizeof(double));
 		cudaMalloc(&acc[i], AMOUNT * sizeof(double));
+		cudaMemset(acc[i], 0, AMOUNT * sizeof(double));
 	}
 	cudaMalloc(&energy, AMOUNT * sizeof(double));
 }
@@ -109,20 +126,24 @@ __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
 
+__device__ bool operator== (double3 a, double3 b) {
+	return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
 #define GPU_PAIR_INTERACTION_WRAPPER( __CODE__ ) 				\
 																\
 	int tid = threadIdx.x,										\
 	bid = blockIdx.x,											\
 	ind = bid * BLOCK_SIZE + tid;								\
 																\
-	double3 p = 1. / SIZE * POS(ind),							\
-	v = VEL(ind);												\
+	double3 p = 1. / SIZE * pos.get(ind),						\
+	v = vel.get(ind);											\
 																\
 	__shared__ double3 _pos[BLOCK_SIZE];						\
 	for (int i = 0; i < GRID_SIZE; i++) {						\
 																\
 		__syncthreads();										\
-		_pos[tid] = 1. / SIZE * POS(i * BLOCK_SIZE + tid);		\
+		_pos[tid] = 1. / SIZE * pos.get(i * BLOCK_SIZE + tid);	\
 		__syncthreads();										\
 																\
 		for (int j = 0; j < BLOCK_SIZE; j++) {					\
@@ -132,6 +153,8 @@ __device__ double3 operator+ (double3 a, double3 b) {
 			}													\
 		}														\
 	}															\
+																\
+	p *= SIZE;
 
 constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
@@ -176,28 +199,25 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p) {
 #endif
 }
 
-#define POS(i) double3({posx[i], posy[i], posz[i]})
-#define VEL(i) double3({velx[i], vely[i], velz[i]})
-
-__global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* accx, double* accy, double* accz) {
+__global__ void euler_gpu(vec pos, vec vel, vec acc) {
 	double3 a_lj = { 0., 0., 0. };
 	double3 a_em = { 0., 0., 0. };
-	
+
 	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
+
+	double3 _a = acc.get(ind);
 
 	a_lj *= 48. * EPSILON * SIZE / SIGMA / SIGMA / M;
 	a_em *= 1. / (4. * PI * EPSILON0) * Q * Q / SIZE / SIZE / M;
 	
 	double3 a = a_lj + a_em;
-	accx[ind] = a.x; accy[ind] = a.y; accz[ind] = a.z;
+	acc.set(ind, a);
 	
-	v += TIME_STEP * a;
-	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
-	
-	v *= TIME_STEP;
-	posx[ind] += v.x; posy[ind] += v.y, posz[ind] += v.z;
+	vel.set(ind, v + TIME_STEP * a);
+
+	pos.set(ind, p + TIME_STEP * v + TIME_STEP * TIME_STEP * a);
 }
-__global__ void energy_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* energy) {
+__global__ void energy_gpu(vec pos, vec vel, double* energy) {
 	double e_lj = 0;
 	double e_em = 0;
 	
@@ -216,7 +236,7 @@ double get_energy() {
 	energy_valid = true;
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[X], pos[Y], pos[Z], vel[X], vel[Y], vel[Z], energy);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos, vel, energy);
 #endif 
 
 	static double _energy[AMOUNT];
@@ -232,7 +252,7 @@ double get_energy() {
 void euler_step() {
 
 #ifndef __INTELLISENSE__
-	euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[X], pos[Y], pos[Z], vel[X], vel[Y], vel[Z], acc[X], acc[Y], acc[Z]);
+	euler_gpu << < GRID_SIZE, BLOCK_SIZE >> > (pos, vel, acc);
 #endif
 
 	pos_valid = vel_valid = energy_valid = false;
