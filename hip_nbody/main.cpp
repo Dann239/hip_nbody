@@ -16,6 +16,14 @@ static double* vel[3];
 double* _pos[3];
 double* _vel[3];
 
+#ifndef SFML_STATIC
+void window_init() {}
+void window_show() {}
+bool window_is_open() { return true; }
+void window_delete() {}
+void window_draw_point(double x, double y, bool color = false) {}
+#endif
+
 void cpu_alloc() {
 	for (int i = 0; i < 3; i++) {
 		_pos[i] = pos[i] = new double[AMOUNT];
