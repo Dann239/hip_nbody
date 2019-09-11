@@ -84,7 +84,7 @@ int main() {
 			euler_step();
 		for (int i = 0; i < AMOUNT; i++) {
 			get_pos();
-			window_draw_point(pos[0][i] * OUTPUT_COEFF, pos[1][i] * OUTPUT_COEFF);
+			window_draw_point(pos[X][i] * OUTPUT_COEFF, pos[Y][i] * OUTPUT_COEFF);
 		}
 		window_show();
 		cout << get_energy() << endl;
