@@ -80,6 +80,14 @@ void load() {
 	}
 }
 
+double deflect(double& p) {
+	if (p < 0)
+		p += (trunc((-p) / SIZE) + 1) * SIZE;
+	if (p > SIZE)
+		p -= trunc(p / SIZE) * SIZE;
+	return p;
+}
+
 int main() {
 	cpu_alloc();
 	gpu_alloc();
@@ -92,7 +100,7 @@ int main() {
 			euler_step();
 		for (int i = 0; i < AMOUNT; i++) {
 			get_pos();
-			window_draw_point(pos[X][i] * OUTPUT_COEFF, pos[Y][i] * OUTPUT_COEFF);
+			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF);
 		}
 		window_show();
 		cout << get_energy() << endl;

@@ -205,17 +205,15 @@ __global__ void euler_gpu(vec pos, vec vel, vec acc) {
 
 	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
 
-	double3 _a = acc.get(ind);
-
 	a_lj *= 48. * EPSILON * SIZE / SIGMA / SIGMA / M;
 	a_em *= 1. / (4. * PI * EPSILON0) * Q * Q / SIZE / SIZE / M;
-	
+
+	double3 _a = acc.get(ind);
 	double3 a = a_lj + a_em;
 	acc.set(ind, a);
-	
-	vel.set(ind, v + TIME_STEP * a);
 
-	pos.set(ind, p + TIME_STEP * v + TIME_STEP * TIME_STEP * a);
+	vel.set(ind, v + TIME_STEP * a);
+	pos.set(ind, p + TIME_STEP * (v + TIME_STEP * a));
 }
 __global__ void energy_gpu(vec pos, vec vel, double* energy) {
 	double e_lj = 0;
