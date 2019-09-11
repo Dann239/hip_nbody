@@ -10,6 +10,7 @@ void __syncthreads() {}
 #endif
 
 #include "kernel.h"
+#include "properties.h"
 
 #include <iostream>
 using namespace std;
@@ -173,7 +174,8 @@ __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx
 	
 	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
 
-	a_lj = { 0., 0., 0. };
+	a_em = { 0., 0., 0. };
+
 	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj + (1 / 4 / PI / EPSILON0 * Q * Q / SIZE / SIZE) * a_em;
 	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
 	v *= TIME_STEP;
@@ -185,10 +187,12 @@ __global__ void energy_gpu(double* posx, double* posy, double* posz, double* vel
 	double e_k = 0;
 	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, e_em, p, _p););
 
+	e_em = 0;
+
 	e_lj *= 2. * EPSILON;
 	e_em *= 1. / 8. / PI / EPSILON0 / SIZE * Q * Q;
 	e_k += M * hypot2(v) / 2.;
-	energy[ind] = e_k;
+	energy[ind] = e_k + e_em + e_lj;
 }
 
 
