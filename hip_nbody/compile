@@ -26,7 +26,7 @@ then
     filesnew=""
     for currfile in $files
     do
-        echo $currfile
+        #echo $currfile
         if grep -q ".cu" <<< "$currfile"; then
             currfilenew=${currfile//".cu"/}
             currfilenew="$currfilenew.cpp"
