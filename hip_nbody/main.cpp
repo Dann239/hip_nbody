@@ -73,8 +73,8 @@ int main() {
 	long long t = clock();
 	for (int i = 0; i < steps; i++) {
 		euler_step();
-	}
 	cout << get_energy() << endl;
+	}
 
 	cout << (27. * AMOUNT * AMOUNT * steps / ((long long)(clock() - t) / CLOCKS_PER_SEC) * 1e-12) << "TFlops" << endl;
 	

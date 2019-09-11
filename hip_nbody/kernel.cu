@@ -133,48 +133,62 @@ __device__ double3 operator+ (double3 a, double3 b) {
 
 constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
-__device__ void get_a(double3& a_lj, double3 p, double3 _p) {
+__device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
 
-	double r2 = hypot2(d) * ss_ss,
+	double d2 = hypot2(d),
+		r2 = d2 * ss_ss,
 		r_2 = 1. / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2,
 		r_8 = r_4 * r_4,
 		_2r_14__r_8 = (r_6 - .5) * r_8;
-
+	
 	a_lj += (_2r_14__r_8 * d);
+	
+	double d_1 = 1 / sqrt(d2);
+	a_em += d_1 * d_1 * d_1 * d;
 }
-__device__ void get_e(double& e_lj, double3 p, double3 _p) {
+__device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
 
-	double r2 = hypot2(d) * ss_ss,
+	double d2 = hypot2(d),
+		r2 = d2 * ss_ss,
 		r_2 = 1. / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
 
 	e_lj += (r_6 - 1) * r_6;
+
+	double d_1 = 1 / sqrt(d2);
+	e_em += d_1;
 }
 
 
 __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz) {
 	double3 a_lj = { 0., 0., 0. };
+	double3 a_em = { 0., 0., 0. };
 	
-	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, p, _p);)
+	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
 
-	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj;
+	a_lj = { 0., 0., 0. };
+	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj + (1 / 4 / PI / EPSILON0 * Q * Q / SIZE / SIZE) * a_em;
 	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
 	v *= TIME_STEP;
 	posx[ind] += v.x; posy[ind] += v.y, posz[ind] += v.z;
 }
 __global__ void energy_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz, double* energy) {
 	double e_lj = 0;
-	
-	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, p, _p);)
+	double e_em = 0;
+	double e_k = 0;
+	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, e_em, p, _p););
 
-	energy[ind] = 2. * EPSILON * e_lj + M * hypot2(v) / 2.;
+	e_lj *= 2. * EPSILON;
+	e_em *= 1. / 8. / PI / EPSILON0 / SIZE * Q * Q;
+	e_k += M * hypot2(v) / 2.;
+	energy[ind] = e_k;
 }
 
 

@@ -47,8 +47,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 1 << 7;
-constexpr int BLOCK_SIZE = 1 << 7;
+constexpr int GRID_SIZE = 1 << 5;
+constexpr int BLOCK_SIZE = 1 << 5;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr int BUTCHER_SIZE = 15;
@@ -66,13 +66,11 @@ constexpr double M = 0.040 / NA;
 constexpr double Q = 1.60217662e-19;
 
 constexpr double T = 300;
-constexpr double P = 1e8;
+constexpr double P = 1e6;
 constexpr double N = P / (K * T);//25.7444e27;
 
-constexpr double V = 0;// _sqrt(3 * K * T / M);
+constexpr double V = _sqrt(3 * K * T / M);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 5e-14;
-constexpr double RENDER_STEP = TIME_STEP * 10;
-constexpr double TOTAL_TIME = RENDER_STEP * 5;
