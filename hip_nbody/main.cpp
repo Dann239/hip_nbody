@@ -73,6 +73,7 @@ int main() {
 	cpu_alloc();
 	gpu_alloc();
 	randomize();
+	//load();
 	window_init();
 	
 	while(window_is_open()) {
@@ -86,8 +87,8 @@ int main() {
 		cout << get_energy() << endl;
 	}
 	window_delete();
-	
-	
+
+	dump();
 	gpu_dealloc();
 	return 0;
 }

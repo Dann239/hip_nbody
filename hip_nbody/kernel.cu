@@ -77,6 +77,7 @@ __device__ double hypot2(double3 p) {
 __device__ double3 round(double3 a) {
 	return { round(a.x),round(a.y),round(a.z) };
 }
+
 #ifndef __HIPCC__
 __device__ double3& operator-= (double3& a, double3 b) {
 	a.x -= b.x;
@@ -91,6 +92,7 @@ __device__ double3& operator+=(double3& a, double3 b) {
 	return a;
 }
 #endif
+
 __device__ double3& operator*= (double3& a, double b) {
 	a.x *= b;
 	a.y *= b;
@@ -106,7 +108,6 @@ __device__ double3 operator* (double b, double3 a) {
 __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
-
 
 #define GPU_PAIR_INTERACTION_WRAPPER( __CODE__ ) 				\
 																\
@@ -138,35 +139,41 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
 
-	double d2 = hypot2(d),
-		r2 = d2 * ss_ss,
+	double d2 = hypot2(d);
+
+#ifdef ENABLE_LJ
+	double r2 = d2 * ss_ss,
 		r_2 = 1. / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2,
 		r_8 = r_4 * r_4,
 		_2r_14__r_8 = (r_6 - .5) * r_8;
-	
 	a_lj += (_2r_14__r_8 * d);
+#endif
 	
-	double d_1 = 1 / sqrt(d2);
-	a_em += d_1 * d_1 * d_1 * d;
+#ifdef ENABLE_EM
+	double d_2 = 1 / d2;
+	a_em += d_2 * sqrt(d_2) * d;
+#endif 
 }
 __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p) {
 	double3 d = p - _p;
 	d -= round(d);
+	double d2 = hypot2(d);
 
-	double d2 = hypot2(d),
-		r2 = d2 * ss_ss,
+#ifdef ENABLE_LJ
+		double r2 = d2 * ss_ss,
 		r_2 = 1. / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
-
 	e_lj += (r_6 - 1) * r_6;
+#endif
 
+#ifdef ENABLE_EM
 	double d_1 = 1 / sqrt(d2);
 	e_em += d_1;
+#endif
 }
-
 
 __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx, double* vely, double* velz) {
 	double3 a_lj = { 0., 0., 0. };
@@ -174,9 +181,7 @@ __global__ void euler_gpu(double* posx, double* posy, double* posz, double* velx
 	
 	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
 
-	a_em = { 0., 0., 0. };
-
-	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj + (1 / 4 / PI / EPSILON0 * Q * Q / SIZE / SIZE) * a_em;
+	v += (48. * EPSILON * SIZE * TIME_STEP / SIGMA / SIGMA / M) * a_lj + (1. / (4. * PI * EPSILON0) * Q * Q / SIZE / SIZE) * a_em;
 	velx[ind] = v.x; vely[ind] = v.y, velz[ind] = v.z;
 	v *= TIME_STEP;
 	posx[ind] += v.x; posy[ind] += v.y, posz[ind] += v.z;
@@ -185,16 +190,14 @@ __global__ void energy_gpu(double* posx, double* posy, double* posz, double* vel
 	double e_lj = 0;
 	double e_em = 0;
 	double e_k = 0;
+	
 	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, e_em, p, _p););
-
-	e_em = 0;
 
 	e_lj *= 2. * EPSILON;
 	e_em *= 1. / 8. / PI / EPSILON0 / SIZE * Q * Q;
 	e_k += M * hypot2(v) / 2.;
 	energy[ind] = e_k + e_em + e_lj;
 }
-
 
 double get_energy() {
 	static double total_energy = 0;
