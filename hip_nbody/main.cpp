@@ -13,10 +13,13 @@ constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 static double* pos[3];
 static double* vel[3];
 
+double* _pos[3];
+double* _vel[3];
+
 void cpu_alloc() {
 	for (int i = 0; i < 3; i++) {
-		pos[i] = new double[AMOUNT];
-		vel[i] = new double[AMOUNT];
+		_pos[i] = pos[i] = new double[AMOUNT];
+		_vel[i] = vel[i] = new double[AMOUNT];
 	}
 }
 
@@ -44,13 +47,13 @@ void randomize() {
 		grid[grid_pos[0]][grid_pos[1]][grid_pos[2]] = true;
 	}
 
-	set_pos(pos);
-	set_vel(vel);
+	set_pos();
+	set_vel();
 }
 
 void dump() {
-	get_pos(pos);
-	get_vel(vel);
+	get_pos();
+	get_vel();
 	ofstream out("data/dump.dat", ios::binary);
 	for (int i = 0; i < 3; i++) {
 		out.write((char*)pos[i], AMOUNT * sizeof(double));
@@ -64,8 +67,8 @@ void load() {
 			in.read((char*)pos[i], AMOUNT * sizeof(double));
 			in.read((char*)vel[i], AMOUNT * sizeof(double));
 		}
-		set_pos(pos);
-		set_vel(vel);
+		set_pos();
+		set_vel();
 	}
 }
 
@@ -80,7 +83,7 @@ int main() {
 		for(int i = 0; i < SKIPS; i++)
 			euler_step();
 		for (int i = 0; i < AMOUNT; i++) {
-			get_pos(pos);
+			get_pos();
 			window_draw_point(pos[0][i] * OUTPUT_COEFF, pos[1][i] * OUTPUT_COEFF);
 		}
 		window_show();

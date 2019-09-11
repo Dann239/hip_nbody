@@ -52,15 +52,15 @@ constexpr double M = 0.040 / NA;
 constexpr double Q = 1.60217662e-19;
 
 constexpr double T = 300;
-constexpr double P = 1e8;
+constexpr double P = 1e6;
 constexpr double N = P / (K * T);
 
 constexpr double V = 0;// _sqrt(3 * K * T / M);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
-constexpr double TIME_STEP = 5e-15;
+constexpr double TIME_STEP = 1e-15;
 constexpr double SKIPS = 5;
 
-//#define ENABLE_EM
+#define ENABLE_EM
 #define ENABLE_LJ
