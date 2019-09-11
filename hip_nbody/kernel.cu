@@ -216,7 +216,7 @@ double get_energy() {
 	energy_valid = true;
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], energy);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[X], pos[Y], pos[Z], vel[X], vel[Y], vel[Z], energy);
 #endif 
 
 	static double _energy[AMOUNT];
@@ -232,7 +232,7 @@ double get_energy() {
 void euler_step() {
 
 #ifndef __INTELLISENSE__
-	euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], acc[0], acc[1], acc[2]);
+	euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos[X], pos[Y], pos[Z], vel[X], vel[Y], vel[Z], acc[X], acc[Y], acc[Z]);
 #endif
 
 	pos_valid = vel_valid = energy_valid = false;

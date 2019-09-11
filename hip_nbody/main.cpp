@@ -39,12 +39,12 @@ void randomize() {
 			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * V;
 		}
 
-		if (grid[grid_pos[0]][grid_pos[1]][grid_pos[2]]) {
+		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
 			i--;
 			continue;
 		}
 
-		grid[grid_pos[0]][grid_pos[1]][grid_pos[2]] = true;
+		grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]] = true;
 	}
 
 	set_pos();
