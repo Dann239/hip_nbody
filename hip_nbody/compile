@@ -2,9 +2,11 @@
 files=""
 platform="guess"
 name="a.out"
+run=0
 while [ -n "$1" ]
 do
 case "$1" in
+-r) run=1 ;;
 -p) platform="$2" 
 shift ;;
 -o) name="$2"
@@ -45,5 +47,8 @@ then
     done
 fi
 
+if [ $run -eq 1 ] 
+then
 ./$name
+fi
 
