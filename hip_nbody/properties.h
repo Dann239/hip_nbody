@@ -33,6 +33,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
+enum XYZ {X = 0, Y, Z};
+
 constexpr int GRID_SIZE = 1 << 5;
 constexpr int BLOCK_SIZE = 1 << 5;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
