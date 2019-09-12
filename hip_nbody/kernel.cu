@@ -39,9 +39,9 @@ struct vec {
 };
 
 properties::properties(int block) {
-	for (int i = 0; i < ELEMS_NUM; i++)
+	for (int i = 1; i <= ELEMS_NUM; i++)
 		if (1. * block / GRID_SIZE <= ELEMS_DIVISIONS[i]) {
-			*this = properties((ELEMS)ELEMS_TYPES[i]);
+			set_properties(ELEMS_TYPES[i - 1]);
 			return;
 		}
 	return;
@@ -55,9 +55,8 @@ void gpu_alloc() {
 	cudaMalloc(&energy, AMOUNT * sizeof(double));
 
 	cudaMalloc(&props, GRID_SIZE * sizeof(properties));
-	static properties* _props = new properties[GRID_SIZE];
-	for (int i = 0; i < GRID_SIZE; i++)
-		_props[i] = properties(i);
+	static properties _props[GRID_SIZE];
+	for (int i = 0; i < GRID_SIZE; i++) _props[i] = properties(i);
 	cudaMemcpy(props, _props, GRID_SIZE * sizeof(properties), cudaMemcpyHostToDevice);
 }
 void gpu_dealloc() {
@@ -109,7 +108,7 @@ __device__ double3 round(double3 a) {
 	return { round(a.x),round(a.y),round(a.z) };
 }
 
-#ifndef __HIPCC__
+#ifndef __HCC__
 __device__ double3& operator-= (double3& a, double3 b) {
 	a.x -= b.x;
 	a.y -= b.y;
@@ -146,8 +145,6 @@ __device__ double3 operator& (double3 a, double3 b) {
 __device__ bool operator== (double3 a, double3 b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
-
-//constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
 __device__ properties combine(properties p, properties _p) {
 	p.EPSILON = sqrt(p.EPSILON * _p.EPSILON);

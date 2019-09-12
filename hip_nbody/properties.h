@@ -65,13 +65,13 @@ enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON};
 
 constexpr int ELEMS_NUM = 2;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM] = {.5,1};
+constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, .5, 1 };
 constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {ASTATINE, HELIUM};
 
 struct properties {
 	double SIGMA, EPSILON, M, Q;
 	int COLOUR;
-	properties(ELEMS type = ASTATINE) {
+	void set_properties(ELEMS type = ASTATINE) {
 		COLOUR = (int)type;
 		switch (type)
 		{
@@ -99,7 +99,9 @@ struct properties {
 			EPSILON = 0;
 			Q = -E;
 			break;
+		default:
+			SIGMA = EPSILON = M = Q = COLOUR = -1;
 		}
 	}
-	properties(int block);
+	properties(int block = 0);
 };
