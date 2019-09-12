@@ -15,10 +15,13 @@ void __syncthreads() {}
 #include <iostream>
 using namespace std;
 
+#define d3_0 double3({0.,0.,0.})
+
 static double* pos[3];
 static double* vel[3];
 static double* acc[3];
 static double* energy;
+static properties* props;
 
 struct vec {
 	double* v[3];
@@ -36,6 +39,15 @@ struct vec {
 	}
 };
 
+properties::properties(int block) {
+	for (int i = 0; i < ELEMS_NUM - 1; i++)
+		if (1. * block / GRID_SIZE < ELEMS_DIVISIONS[i]) {
+			*this = properties((ELEMS)ELEMS_TYPES[i]);
+			return;
+		}
+	*this = properties((ELEMS)ELEMS_TYPES[ELEMS_NUM - 1]);
+}
+
 void gpu_alloc() {
 	for (int i = 0; i < 3; i++) {
 		cudaMalloc(&pos[i], AMOUNT * sizeof(double));
@@ -44,6 +56,12 @@ void gpu_alloc() {
 		cudaMemset(acc[i], 0, AMOUNT * sizeof(double));
 	}
 	cudaMalloc(&energy, AMOUNT * sizeof(double));
+
+	cudaMalloc(&props, GRID_SIZE * sizeof(properties));
+	static properties* _props = new properties[GRID_SIZE];
+	for (int i = 0; i < GRID_SIZE; i++)
+		_props[i] = properties(i);
+	cudaMemcpy(props, _props, GRID_SIZE * sizeof(properties), cudaMemcpyHostToDevice);
 }
 void gpu_dealloc() {
 	for (int i = 0; i < 3; i++) {
@@ -130,35 +148,16 @@ __device__ bool operator== (double3 a, double3 b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-#define GPU_PAIR_INTERACTION_WRAPPER( __CODE__ ) 				\
-																\
-	int tid = threadIdx.x,										\
-	bid = blockIdx.x,											\
-	ind = bid * BLOCK_SIZE + tid;								\
-																\
-	double3 p = 1. / SIZE * pos.get(ind),						\
-	v = vel.get(ind);											\
-																\
-	__shared__ double3 _pos[BLOCK_SIZE];						\
-	for (int i = 0; i < GRID_SIZE; i++) {						\
-																\
-		__syncthreads();										\
-		_pos[tid] = 1. / SIZE * pos.get(i * BLOCK_SIZE + tid);	\
-		__syncthreads();										\
-																\
-		for (int j = 0; j < BLOCK_SIZE; j++) {					\
-			double3 _p = _pos[j];								\
-			if (i != bid || j != tid) {							\
-				__CODE__										\
-			}													\
-		}														\
-	}															\
-																\
-	p *= SIZE;
+//constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
 
-constexpr double ss_ss = (SIZE * SIZE) / (SIGMA * SIGMA);
+__device__ properties combine(properties p, properties _p) {
+	p.EPSILON = sqrt(p.EPSILON * _p.EPSILON);
+	p.SIGMA = (p.SIGMA + _p.SIGMA) / 2;
+	p.Q = sqrt(p.Q * _p.Q);
+	return p;
+}
 
-__device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p) {
+__device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
 	d -= round(d);
 
@@ -180,7 +179,7 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p) {
 	a_em += d_2 * d_1 * d;
 #endif 
 }
-__device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p) {
+__device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
 	d -= round(d);
 	double d2 = hypot2(d);
@@ -199,15 +198,50 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p) {
 #endif
 }
 
-__global__ void euler_gpu(vec pos, vec vel, vec acc) {
-	double3 a_lj = { 0., 0., 0. };
-	double3 a_em = { 0., 0., 0. };
+#define GPU_PAIR_INTERACTION_WRAPPER(__INIT__, __BODY__, __POST__)							\
+	int tid = threadIdx.x,																	\
+	bid = blockIdx.x,																		\
+	ind = bid * BLOCK_SIZE + tid;															\
+																							\
+	double3 p = 1. / SIZE * pos.get(ind),													\
+	v = vel.get(ind);																		\
+																							\
+	properties P = props[0];																\
+	__shared__ double3 _pos[BLOCK_SIZE];													\
+	for (int i = 0; i < GRID_SIZE; i++) {													\
+		__syncthreads();																	\
+		_pos[tid] = 1. / SIZE * pos.get(i * BLOCK_SIZE + tid);								\
+		__syncthreads();																	\
+																							\
+		properties _P = combine(P, props[0]);												\
+		double ss_ss = (SIZE * SIZE) / (_P.SIGMA * _P.SIGMA);								\
+																							\
+		__INIT__																			\
+		for (int j = 0; j < BLOCK_SIZE; j++) {												\
+			double3 _p = _pos[j];															\
+			if (i != bid || j != tid) {														\
+				__BODY__																	\
+			}																				\
+		}																					\
+		__POST__																			\
+	}
 
-	GPU_PAIR_INTERACTION_WRAPPER(get_a(a_lj, a_em, p, _p););
+__global__ void euler_gpu(vec pos, vec vel, vec acc, properties* props) {
+	double3 a_lj = d3_0;
+	double3 a_em = d3_0;
 
-	a_lj *= 48. * EPSILON * SIZE / SIGMA / SIGMA / M;
-	a_em *= 1. / (4. * PI * EPSILON0) * Q * Q / SIZE / SIZE / M;
-
+	GPU_PAIR_INTERACTION_WRAPPER(
+		double3 da_lj = d3_0;
+		double3 da_em = d3_0;
+		,
+		get_a(da_lj, da_em, p, _p, ss_ss);
+		,
+		a_lj += 48. * _P.EPSILON * SIZE / _P.SIGMA / _P.SIGMA / _P.M * da_lj;
+		a_em += 1. / (4. * PI * EPSILON0) * _P.Q * _P.Q / SIZE / SIZE / _P.M * da_em;
+	);
+	
+	p *= SIZE;
+	
 	double3 _a = acc.get(ind);
 	double3 a = a_lj + a_em;
 	acc.set(ind, a);
@@ -215,17 +249,28 @@ __global__ void euler_gpu(vec pos, vec vel, vec acc) {
 	vel.set(ind, v + TIME_STEP * a);
 	pos.set(ind, p + TIME_STEP * (v + TIME_STEP * a));
 }
-__global__ void energy_gpu(vec pos, vec vel, double* energy) {
+
+__global__ void energy_gpu(vec pos, vec vel, double* energy, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
 	
-	GPU_PAIR_INTERACTION_WRAPPER(get_e(e_lj, e_em, p, _p););
+	GPU_PAIR_INTERACTION_WRAPPER(
+		double de_lj = 0;
+		double de_em = 0;
+		,
+		get_e(de_lj, de_em, p, _p, ss_ss);
+		,
+		e_lj += 2. * _P.EPSILON * de_lj;
+		e_em += 1. / (8. * PI * EPSILON0) * _P.Q * _P.Q / SIZE * de_em;
+	);
 
-	e_lj *= 2. * EPSILON;
-	e_em *= 1. / (8. * PI * EPSILON0) * Q * Q / SIZE;
-	double e_k = M * hypot2(v) / 2.;
+	//e_lj *= 2. * EPSILON;
+	//e_em *= 1. / (8. * PI * EPSILON0) * Q * Q / SIZE;
+	
+	double e_k = P.M * hypot2(v) / 2.;
 	energy[ind] = e_k + e_em + e_lj;
 }
+
 
 double get_energy() {
 	static double total_energy = 0;
@@ -234,7 +279,7 @@ double get_energy() {
 	energy_valid = true;
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos, vel, energy);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos, vel, energy, props);
 #endif 
 
 	static double _energy[AMOUNT];
@@ -250,7 +295,7 @@ double get_energy() {
 void euler_step() {
 
 #ifndef __INTELLISENSE__
-	euler_gpu << < GRID_SIZE, BLOCK_SIZE >> > (pos, vel, acc);
+	euler_gpu << < GRID_SIZE, BLOCK_SIZE >> > (pos, vel, acc, props);
 #endif
 
 	pos_valid = vel_valid = energy_valid = false;

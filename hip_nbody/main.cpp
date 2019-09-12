@@ -100,7 +100,7 @@ int main() {
 			euler_step();
 		for (int i = 0; i < AMOUNT; i++) {
 			get_pos();
-			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF);
+			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, properties(i / BLOCK_SIZE).COLOUR);
 		}
 		window_show();
 		cout << get_energy() << endl;

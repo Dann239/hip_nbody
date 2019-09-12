@@ -44,20 +44,25 @@ bool window_is_open() {
 void window_delete() {
 	delete window;
 }
-void window_draw_point(double x, double y, bool color) {
-	/*static Vertex point;
-	point.position = Vector2f((double)x, (double)y);
-	point.color = Color::Red;
-	window->draw(&point, 1, Points);
-	*/
+void window_draw_point(double x, double y, int colour) {
+	
 	const float r = SCREEN_SIZE * 4e-3f;
 	static CircleShape point;
 	point.setRadius(r);
 	point.setPointCount(6);
-	point.setFillColor(Color::Red);
-	if (color) {
+	switch (colour) {
+	case 0:
 		point.setFillColor(Color::Blue);
-		point.setRadius(r);
+		break;
+	case 1:
+		point.setFillColor(Color::Red);
+		break;
+	case 2:
+		point.setFillColor(Color::Yellow);
+		break;
+	case 3:
+		point.setFillColor(Color::White);
+		break;
 	}
 	point.setPosition(Vector2f((float)x - r, (float)y - r));
 	window->draw(point);
