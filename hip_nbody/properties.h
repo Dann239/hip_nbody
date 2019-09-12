@@ -73,13 +73,12 @@ struct properties {
 	int COLOUR;
 	properties(ELEMS type = ASTATINE) {
 		COLOUR = (int)type;
-		SIGMA = EPSILON = M = Q = -1;
 		switch (type)
 		{
 		case ASTATINE:
 			SIGMA = 0.3405e-9;
-			EPSILON = 119.8 * K;
 			M = 0.040 / NA;
+			EPSILON = 119.8 * K;
 			Q = E;
 			break;
 		case HELIUM:
