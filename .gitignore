@@ -340,3 +340,4 @@ hip_nbody/data/*.dat
 hip_nbody/data/*.csv
 
 SFML/
+*.run
