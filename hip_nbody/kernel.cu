@@ -295,7 +295,7 @@ double get_energy() {
 void euler_step() {
 
 #ifndef __INTELLISENSE__
-	euler_gpu << < GRID_SIZE, BLOCK_SIZE >> > (pos, vel, acc, props);
+	euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (pos, vel, acc, props);
 #endif
 
 	pos_valid = vel_valid = energy_valid = false;

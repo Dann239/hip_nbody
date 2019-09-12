@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
+#include <math.h>
 using namespace std;
 
 constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
