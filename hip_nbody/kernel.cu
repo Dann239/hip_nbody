@@ -143,6 +143,9 @@ __device__ double3 operator* (double b, double3 a) {
 __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
+__device__ double3 operator& (double3 a, double3 b) {
+	return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+}
 
 __device__ bool operator== (double3 a, double3 b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
