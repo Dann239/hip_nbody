@@ -40,8 +40,6 @@ constexpr int GRID_SIZE = 1 << 5;
 constexpr int BLOCK_SIZE = 1 << 5;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
-constexpr int BUTCHER_SIZE = 15;
-
 constexpr double PI = 3.14159265359;
 constexpr double K = 1.380649e-23;
 constexpr double NA = 6.022141e23;
