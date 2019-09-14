@@ -291,9 +291,6 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	v += TIME_STEP * a;
 	p += TIME_STEP * v;
 
-	if (v == d3_0)
-		printf("%d %d\n", blockIdx.x, threadIdx.x);
-
 	vec_pos.set(ind, p);
 	vec_vel.set(ind, v);
 }
