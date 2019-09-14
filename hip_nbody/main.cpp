@@ -11,11 +11,8 @@ using namespace std;
 
 constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 
-static double* pos[3];
-static double* vel[3];
-
-double** _pos = pos;
-double** _vel = vel;
+double* pos[3];
+double* vel[3];
 
 #ifndef SFML_STATIC
 void window_init() {}
@@ -85,17 +82,17 @@ int main() {
 	//load();
 	
 	window_init();
-	
+	force_energy_calc();
+
 	while(window_is_open()) {
 		long long t0 = clock();
-		
 		euler_steps(SKIPS);
 
-#ifdef SFML_STATIC
+	#ifdef SFML_STATIC
 		for (int i = 0; i < AMOUNT; i++)
 			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, properties(i / BLOCK_SIZE).COLOUR);
 		window_show();
-#endif
+	#endif
 
 		pull_values();
 		cout << "mspf: " << ((long long)clock() - t0) * 1000 / CLOCKS_PER_SEC << "; e = " << total_energy << endl;
@@ -103,6 +100,6 @@ int main() {
 	window_delete();
 
 	dump();
-	gpu_dealloc();
+	dealloc();
 	return 0;
 }

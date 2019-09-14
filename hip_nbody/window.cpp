@@ -5,7 +5,7 @@ using namespace std;
 
 #ifdef SFML_STATIC
 
-#include "SFML\Graphics.hpp"
+#include "SFML/Graphics.hpp"
 using namespace sf;
 
 RenderWindow *window;
@@ -13,7 +13,7 @@ RenderWindow *window;
 void window_init() {
 	ContextSettings settings;
 	window = new RenderWindow;
-	//settings.antialiasingLevel = 8;
+	settings.antialiasingLevel = 8;
 	window->create(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "Runge CUDA", sf::Style::Default, settings);
 	window->setFramerateLimit(120);
 }
@@ -50,20 +50,7 @@ void window_draw_point(double x, double y, int colour) {
 	static CircleShape point;
 	point.setRadius(r);
 	point.setPointCount(6);
-	switch (colour) {
-	case 0:
-		point.setFillColor(Color::Blue);
-		break;
-	case 1:
-		point.setFillColor(Color::Red);
-		break;
-	case 2:
-		point.setFillColor(Color::Yellow);
-		break;
-	case 3:
-		point.setFillColor(Color::White);
-		break;
-	}
+	point.setFillColor(Color(Uint32(colour)));
 	point.setPosition(Vector2f((float)x - r, (float)y - r));
 	window->draw(point);
 }

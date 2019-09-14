@@ -36,8 +36,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 1 << 8;
-constexpr int BLOCK_SIZE = 1 << 8;
+constexpr int GRID_SIZE = 1 << 7;
+constexpr int BLOCK_SIZE = 1 << 5;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -57,7 +57,7 @@ constexpr double V = 0;// _sqrt(3 * K * T / M);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 5e-16;
-constexpr int SKIPS = 1;
+constexpr int SKIPS = 10;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -70,9 +70,8 @@ constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {ASTATINE, HELIUM};
 
 struct properties {
 	double SIGMA, EPSILON, M, Q;
-	int COLOUR;
+	unsigned int COLOUR;
 	void set_properties(ELEMS type = ASTATINE) {
-		COLOUR = (int)type;
 		switch (type)
 		{
 		case ASTATINE:
@@ -80,27 +79,32 @@ struct properties {
 			M = 0.040 / NA;
 			EPSILON = 119.8 * K;
 			Q = E;
+			COLOUR = 0x0000FFFF;
 			break;
 		case HELIUM:
 			SIGMA = 0.263e-9;
 			M = 0.004 / NA;
 			EPSILON = 6.03 * K;
 			Q = -E;
+			COLOUR = 0xFF0000FF;
 			break;
 		case PROTON: 
 			SIGMA = 0.37e-9;
 			M = 0.001 / NA;
 			EPSILON = 30 * K;
 			Q = E;
+			COLOUR = 0xFF7F00FF;
 			break;
 		case ELECTRON:
 			SIGMA = 1e-9;
 			M = 9.1e-31;
 			EPSILON = 0;
 			Q = -E;
+			COLOUR = 0xFFFFFFFF;
 			break;
 		default:
-			SIGMA = EPSILON = M = Q = COLOUR = -1;
+			SIGMA = EPSILON = M = Q = -1;
+			COLOUR = 0x777777FF;
 		}
 	}
 	properties(int block = 0);

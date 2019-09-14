@@ -17,22 +17,21 @@ using namespace std;
 
 #define d3_0 double3({0.,0.,0.})
 
-
 struct vec {
 	double* v_gpu[3];
 	double* v_cpu[3];
 	bool validity;
 	
-	__device__ void set(int i, double3 p) {
-		v_gpu[X][i] = p.x;
-		v_gpu[Y][i] = p.y;
-		v_gpu[Z][i] = p.z;
-	}
 	__device__ double3 get(int i) const {
 		return double3({ 
 			v_gpu[X][i],
 			v_gpu[Y][i],
 			v_gpu[Z][i] });
+	}
+	__device__ void set(int i, double3 p) {
+		v_gpu[X][i] = p.x;
+		v_gpu[Y][i] = p.y;
+		v_gpu[Z][i] = p.z;
 	}
 	
 	void invalidate() {
@@ -87,8 +86,8 @@ properties::properties(int block) {
 
 void alloc() {
 	for (int i = 0; i < 3; i++) {
-		cudaHostAlloc(&_pos[i], MEM_LEN, cudaHostAllocMapped);
-		cudaHostAlloc(&_vel[i], MEM_LEN, cudaHostAllocMapped);
+		cudaHostAlloc(&pos[i], MEM_LEN, cudaHostAllocMapped);
+		cudaHostAlloc(&vel[i], MEM_LEN, cudaHostAllocMapped);
 	}
 
 	vec_pos.init();
@@ -102,21 +101,26 @@ void alloc() {
 	for (int i = 0; i < GRID_SIZE; i++) _props[i] = properties(i);
 	cudaMemcpy(props, _props, GRID_SIZE * sizeof(properties), cudaMemcpyHostToDevice);
 }
-void gpu_dealloc() {
+void dealloc() {
+	for (int i = 0; i < 3; i++) {
+		cudaFreeHost(pos[i]);
+		cudaFreeHost(vel[i]);
+	}
 	vec_pos.destroy();
 	vec_pos.destroy();
 	cudaFree(energy);
 	cudaFree(props);
+	cudaFreeHost(_energy);
 	cudaDeviceReset();
 }
 
 void pull_values() {
-	vec_pos.get(_pos);
-	vec_vel.get(_vel);
+	vec_pos.get(pos);
+	vec_vel.get(vel);
 }
 void push_values() {
-	vec_pos.set(_pos);
-	vec_vel.set(_vel);
+	vec_pos.set(pos);
+	vec_vel.set(vel);
 }
 
 void print_err() {
@@ -254,17 +258,20 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	GPU_PAIR_INTERACTION_WRAPPER(
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
-		,
+	,
 		get_a(da_lj, da_em, p, _p, ss_ss);
-		,
+	,
 		a_lj += 48. * _P.EPSILON * SIZE / _P.SIGMA / _P.SIGMA / _P.M * da_lj;
 		a_em += 1. / (4. * PI * EPSILON0) * _P.Q * _P.Q / SIZE / SIZE / _P.M * da_em;
 	);
-	
+
 	double3 a = a_lj + a_em;
 
-	vec_vel.set(ind, v + TIME_STEP * a);
-	vec_pos.set(ind, p + TIME_STEP * (v + TIME_STEP * a));
+	v += TIME_STEP * a;
+	p += TIME_STEP * v;
+
+	vec_vel.set(ind, v);
+	vec_pos.set(ind, p);
 }
 __global__ void energy_gpu(vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;
@@ -273,9 +280,9 @@ __global__ void energy_gpu(vec vec_pos, vec vec_vel, double* energy, properties*
 	GPU_PAIR_INTERACTION_WRAPPER(
 		double de_lj = 0;
 		double de_em = 0;
-		,
+	,
 		get_e(de_lj, de_em, p, _p, ss_ss);
-		,
+	,
 		e_lj += 2. * _P.EPSILON * de_lj;
 		e_em += 1. / (8. * PI * EPSILON0) * _P.Q * _P.Q / SIZE * de_em;
 	);
@@ -286,14 +293,12 @@ __global__ void energy_gpu(vec vec_pos, vec vec_vel, double* energy, properties*
 }
 
 void euler_steps(int steps) {
-
 #ifndef __INTELLISENSE__
 	for(int i = 0; i < steps; i++)
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, props);
 #endif
 	vec_pos.invalidate();
 	vec_vel.invalidate();
-	//cudaDeviceSynchronize();
 
 	total_energy = 0;
 	for (int i = 0; i < AMOUNT; i++) {
@@ -304,5 +309,15 @@ void euler_steps(int steps) {
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
-	//cudaDeviceSynchronize();
+}
+
+void force_energy_calc() {
+#ifndef __INTELLISENSE__
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
+#endif
+	cudaMemcpy(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
+	total_energy = 0;
+	for (int i = 0; i < AMOUNT; i++) {
+		total_energy += _energy[i];
+	}
 }
