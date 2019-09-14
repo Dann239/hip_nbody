@@ -20,7 +20,7 @@ using namespace std;
 struct __declspec(align(64)) vec {
 	double* v_gpu[3];
 	double* v_cpu[3];
-	long long validity;
+	bool validity;
 	
 	__device__ double3 get(int i) const {
 		return double3({ 
@@ -124,6 +124,22 @@ void pull_values() {
 void push_values() {
 	vec_pos.set(pos);
 	vec_vel.set(vel);
+}
+
+void print_chars() {
+	cudaDeviceProp chars;
+	cudaGetDeviceProperties(&chars,0);
+	printf("major: %d\n", chars.major);
+	printf("minor: %d\n", chars.minor);
+	printf("canMapHostMemory: %d\n", chars.canMapHostMemory);
+	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
+	printf("multiProcessorCount: %d\n", chars.multiProcessorCount);
+	printf("warpSize: %d\n", chars.warpSize);
+	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
+	printf("sharedMemPerBlock: %lld\n", chars.sharedMemPerBlock);
+	printf("sharedMemPerMultiprocessor: %lld\n", chars.sharedMemPerMultiprocessor);
+	printf("totalGlobalMem: %lld\n", chars.totalGlobalMem);
+	printf("regsPerBlock: %lld\n", chars.regsPerBlock);
 }
 
 void print_err(bool force) {
@@ -279,7 +295,7 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	vec_pos.set(ind, p);
 	vec_vel.set(ind, v);
 }
-__global__ void energy_gpu(vec vec_pos, vec vec_vel, double* energy, properties* props) {
+__global__ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
 	
