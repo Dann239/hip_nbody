@@ -17,7 +17,7 @@ using namespace std;
 
 #define d3_0 double3({0.,0.,0.})
 
-struct __declspec(align(64)) vec {
+struct vec {
 	double* v_gpu[3];
 	double* v_cpu[3];
 	bool validity;
@@ -132,14 +132,16 @@ void print_chars() {
 	printf("major: %d\n", chars.major);
 	printf("minor: %d\n", chars.minor);
 	printf("canMapHostMemory: %d\n", chars.canMapHostMemory);
-	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("multiProcessorCount: %d\n", chars.multiProcessorCount);
-	printf("warpSize: %d\n", chars.warpSize);
+	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
-	printf("sharedMemPerBlock: %lld\n", chars.sharedMemPerBlock);
-	printf("sharedMemPerMultiprocessor: %lld\n", chars.sharedMemPerMultiprocessor);
-	printf("totalGlobalMem: %lld\n", chars.totalGlobalMem);
-	printf("regsPerBlock: %lld\n", chars.regsPerBlock);
+	printf("totalGlobalMem: %zu\n", chars.totalGlobalMem);
+	printf("regsPerBlock: %d\n", chars.regsPerBlock);
+#ifndef __HIPCC__
+    printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
+	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
+	printf("warpSize: %d\n", chars.warpSize);
+#endif
 }
 
 void print_err(bool force) {

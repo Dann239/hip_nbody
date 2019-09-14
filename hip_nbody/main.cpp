@@ -9,8 +9,6 @@
 #include <math.h>
 using namespace std;
 
-constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
-
 double* pos[3];
 double* vel[3];
 
@@ -92,6 +90,7 @@ int main() {
 		euler_steps(SKIPS);
 
 	#ifdef SFML_STATIC
+		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 		for (int i = 0; i < AMOUNT; i++)
 			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, properties(i / BLOCK_SIZE).COLOUR);
 		window_show();

@@ -68,7 +68,7 @@ constexpr int ELEMS_NUM = 2;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.5, 1 };
 constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM, ASTATINE};
 
-struct __declspec(align(64)) properties {
+struct properties {
 	double SIGMA, EPSILON, M, Q;
 	unsigned int COLOUR;
 	void set_properties(ELEMS type) {
