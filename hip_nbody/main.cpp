@@ -32,7 +32,7 @@ void randomize() {
 		int grid_pos[3];
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
-			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX) * SIZE / grid_size;
+			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
 			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * V;
 		}
 
@@ -81,7 +81,7 @@ int main() {
 	alloc();
 	randomize();
 	//load();
-	
+
 	window_init();
 	force_energy_calc();
 
