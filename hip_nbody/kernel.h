@@ -13,4 +13,4 @@ void push_values();
 void euler_steps(int steps);
 void force_energy_calc();
 
-void print_err();
+void print_err(bool force = true);

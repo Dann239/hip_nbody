@@ -36,8 +36,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 1 << 7;
-constexpr int BLOCK_SIZE = 1 << 5;
+constexpr int GRID_SIZE = 10; 
+constexpr int BLOCK_SIZE = 512; //must be 32N, 512 is optimal for 1060
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -56,22 +56,22 @@ constexpr double V = 0;// _sqrt(3 * K * T / M);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
-constexpr double TIME_STEP = 5e-16;
-constexpr int SKIPS = 10;
+constexpr double TIME_STEP = 1e-15;
+constexpr int SKIPS = 20;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON};
 
-constexpr int ELEMS_NUM = 2;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, .5, 1 };
-constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {ASTATINE, HELIUM};
+constexpr int ELEMS_NUM = 1;
+constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 1 };
+constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM};
 
-struct properties {
+struct __declspec(align(64)) properties {
 	double SIGMA, EPSILON, M, Q;
-	unsigned int COLOUR;
-	void set_properties(ELEMS type = ASTATINE) {
+	unsigned int COLOUR, __space__;
+	void set_properties(ELEMS type) {
 		switch (type)
 		{
 		case ASTATINE:
@@ -88,7 +88,7 @@ struct properties {
 			Q = -E;
 			COLOUR = 0xFF0000FF;
 			break;
-		case PROTON: 
+		case PROTON:
 			SIGMA = 0.37e-9;
 			M = 0.001 / NA;
 			EPSILON = 30 * K;

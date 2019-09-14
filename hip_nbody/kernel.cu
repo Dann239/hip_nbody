@@ -17,10 +17,10 @@ using namespace std;
 
 #define d3_0 double3({0.,0.,0.})
 
-struct vec {
+struct __declspec(align(64)) vec {
 	double* v_gpu[3];
 	double* v_cpu[3];
-	bool validity;
+	long long validity;
 	
 	__device__ double3 get(int i) const {
 		return double3({ 
@@ -50,8 +50,10 @@ struct vec {
 	void get(double** v) {
 		if (!validity) {
 			cudaDeviceSynchronize();
-			for (int i = 0; i < 3; i++)
-				swap(v[i], v_cpu[i]);
+			for (int i = 0; i < 3; i++) {
+				//swap(v[i], v_cpu[i]);
+				cudaMemcpy(v[i], v_gpu[i], MEM_LEN, cudaMemcpyDeviceToHost);
+			}
 		}
 		validity = true;
 	}
@@ -81,6 +83,7 @@ properties::properties(int block) {
 			set_properties(ELEMS_TYPES[i - 1]);
 			return;
 		}
+	cout << "INVALID PROPERTIES OBJECT CREATED\n";
 	return;
 }
 
@@ -123,9 +126,11 @@ void push_values() {
 	vec_vel.set(vel);
 }
 
-void print_err() {
+void print_err(bool force) {
 	cudaDeviceSynchronize();
-	cout << cudaGetErrorString(cudaGetLastError()) << endl;
+	cudaError_t err = cudaGetLastError();
+	if(err || force)
+	cout << cudaGetErrorString(err) << endl;
 }
 
 __device__ double hypot2(double3 p) {
@@ -224,23 +229,22 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 #define GPU_PAIR_INTERACTION_WRAPPER(__INIT__, __BODY__, __POST__)							\
 	int tid = threadIdx.x,																	\
 	bid = blockIdx.x,																		\
-	ind = bid * BLOCK_SIZE + tid;															\
+	ind = bid * blockDim.x + tid;															\
 																							\
 	double3 p = 1. / SIZE * vec_pos.get(ind),												\
 	v = vec_vel.get(ind);																	\
 																							\
 	properties P = props[bid];																\
 	__shared__ double3 _pos[BLOCK_SIZE];													\
-	for (int i = 0; i < GRID_SIZE; i++) {													\
+	for (int i = 0; i < gridDim.x; i++) {													\
 		__syncthreads();																	\
-		_pos[tid] = 1. / SIZE * vec_pos.get(i * BLOCK_SIZE + tid);							\
+		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);							\
 		__syncthreads();																	\
 																							\
 		properties _P = combine(P, props[i]);												\
 		double ss_ss = (SIZE * SIZE) / (_P.SIGMA * _P.SIGMA);								\
-																							\
 		__INIT__																			\
-		for (int j = 0; j < BLOCK_SIZE; j++) {												\
+		for (int j = 0; j < blockDim.x; j++) {												\
 			double3 _p = _pos[j];															\
 			if (i != bid || j != tid) {														\
 				__BODY__																	\
@@ -254,7 +258,6 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	double3 a_lj = d3_0;
 	double3 a_em = d3_0;
-
 	GPU_PAIR_INTERACTION_WRAPPER(
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
@@ -270,8 +273,11 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	v += TIME_STEP * a;
 	p += TIME_STEP * v;
 
-	vec_vel.set(ind, v);
+	if (v == d3_0)
+		printf("%d %d\n", blockIdx.x, threadIdx.x);
+
 	vec_pos.set(ind, p);
+	vec_vel.set(ind, v);
 }
 __global__ void energy_gpu(vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;

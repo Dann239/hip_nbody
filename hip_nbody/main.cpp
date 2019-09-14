@@ -95,6 +95,7 @@ int main() {
 	#endif
 
 		pull_values();
+		print_err(false);
 		cout << "mspf: " << ((long long)clock() - t0) * 1000 / CLOCKS_PER_SEC << "; e = " << total_energy << endl;
 	}
 	window_delete();
