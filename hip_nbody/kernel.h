@@ -1,18 +1,15 @@
 #pragma once
 
-extern double* _pos[3];
-extern double* _vel[3];
+extern double** _pos;
+extern double** _vel;
+extern double total_energy;
 
-void gpu_alloc();
+void alloc();
 void gpu_dealloc();
 
-void get_pos();
-void get_vel();
+void push_values();
+void pull_values();
 
-void set_pos();
-void set_vel();
-
-double get_energy();
-void euler_step();
+void euler_steps(int steps);
 
 void print_err();

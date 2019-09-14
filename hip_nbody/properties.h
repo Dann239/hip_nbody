@@ -36,8 +36,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 1 << 5;
-constexpr int BLOCK_SIZE = 1 << 5;
+constexpr int GRID_SIZE = 1 << 8;
+constexpr int BLOCK_SIZE = 1 << 8;
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -57,7 +57,9 @@ constexpr double V = 0;// _sqrt(3 * K * T / M);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 5e-16;
-constexpr double SKIPS = 5;
+constexpr int SKIPS = 1;
+
+constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON};

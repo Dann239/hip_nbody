@@ -14,8 +14,8 @@ constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 static double* pos[3];
 static double* vel[3];
 
-double* _pos[3];
-double* _vel[3];
+double** _pos = pos;
+double** _vel = vel;
 
 #ifndef SFML_STATIC
 void window_init() {}
@@ -25,16 +25,9 @@ void window_delete() {}
 void window_draw_point(double x, double y, bool color = false) {}
 #endif
 
-void cpu_alloc() {
-	for (int i = 0; i < 3; i++) {
-		_pos[i] = pos[i] = new double[AMOUNT];
-		_vel[i] = vel[i] = new double[AMOUNT];
-	}
-}
-
 void randomize() {
 	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
-	bool grid[grid_size][grid_size][grid_size];
+	static bool grid[grid_size][grid_size][grid_size];
 	for (int i = 0; i < grid_size; i++)
 		for (int j = 0; j < grid_size; j++)
 			for (int k = 0; k < grid_size; k++)
@@ -56,13 +49,11 @@ void randomize() {
 		grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]] = true;
 	}
 
-	set_pos();
-	set_vel();
+	push_values();
 }
 
 void dump() {
-	get_pos();
-	get_vel();
+	pull_values();
 	ofstream out("data/dump.dat", ios::binary);
 	for (int i = 0; i < 3; i++) {
 		out.write((char*)pos[i], AMOUNT * sizeof(double));
@@ -76,8 +67,7 @@ void load() {
 			in.read((char*)pos[i], AMOUNT * sizeof(double));
 			in.read((char*)vel[i], AMOUNT * sizeof(double));
 		}
-		set_pos();
-		set_vel();
+		push_values();
 	}
 }
 
@@ -90,21 +80,25 @@ double deflect(double& p) {
 }
 
 int main() {
-	cpu_alloc();
-	gpu_alloc();
+	alloc();
 	randomize();
 	//load();
+	
 	window_init();
 	
 	while(window_is_open()) {
-		for(int i = 0; i < SKIPS; i++)
-			euler_step();
-		for (int i = 0; i < AMOUNT; i++) {
-			get_pos();
+		long long t0 = clock();
+		
+		euler_steps(SKIPS);
+
+#ifdef SFML_STATIC
+		for (int i = 0; i < AMOUNT; i++)
 			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, properties(i / BLOCK_SIZE).COLOUR);
-		}
-		cout << get_energy() << endl;
 		window_show();
+#endif
+
+		pull_values();
+		cout << "mspf: " << ((long long)clock() - t0) * 1000 / CLOCKS_PER_SEC << "; e = " << total_energy << endl;
 	}
 	window_delete();
 
