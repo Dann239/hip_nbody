@@ -72,7 +72,7 @@ long long properties::get_colour(int block) {
 
 int main() {
 	print_chars();
-	//return 0;
+	return 0;
 
 	alloc();
 	randomize();

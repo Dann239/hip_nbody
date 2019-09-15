@@ -3,6 +3,7 @@
 #ifndef __HIPCC__
 #include "device_launch_parameters.h"
 #include "cuda_runtime_api.h"
+#include "cuda_occupancy.h"
 #endif
 
 #ifdef __INTELLISENSE__
@@ -135,6 +136,8 @@ void print_chars() {
 	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("warpSize: %d\n", chars.warpSize);
 #endif
+
+	
 }
 
 void print_err(bool force) {
@@ -299,7 +302,7 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 		a_lj += lj_coeff[props_ind] * da_lj;
 		a_em += em_coeff[props_ind] * da_em;
 	)
-	
+
 	double3 a = a_lj + a_em;
 
 	v += TIME_STEP * a;
@@ -307,6 +310,7 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 
 	vec_pos.set(ind, p);
 	vec_vel.set(ind, v);
+
 }
 __global__ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;

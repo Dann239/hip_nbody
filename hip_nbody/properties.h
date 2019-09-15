@@ -36,7 +36,7 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 10; //optimal is SM * N, SM=10 for 1060, SM=60 for VEGA, SM=80 for TITAN
+constexpr int GRID_SIZE = 20; //optimal is SM * N, SM=10 for 1060, SM=60 for VEGA, SM=80 for TITAN
 constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is generally optimal
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
