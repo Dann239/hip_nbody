@@ -8,6 +8,7 @@
 
 #ifdef __INTELLISENSE__
 void __syncthreads() {}
+#define __launch_bounds__(X,Y)
 #endif
 
 #include "kernel.h"
@@ -53,8 +54,7 @@ struct vec {
 		if (!validity) {
 			cudaDeviceSynchronize();
 			for (int i = 0; i < 3; i++) {
-				//swap(v[i], v_cpu[i]);
-				cudaMemcpy(v[i], v_gpu[i], MEM_LEN, cudaMemcpyDeviceToHost);
+				swap(v[i], v_cpu[i]);
 			}
 		}
 		validity = true;
@@ -128,6 +128,16 @@ void print_err(bool force) {
 	cout << cudaGetErrorString(err) << endl;
 }
 
+__host__ __device__ int get_elem(int block, properties p) {
+	for (int i = 1; i <= ELEMS_NUM; i++)
+		if (block / (double)GRID_SIZE < p.divisions[i])
+			return i - 1;
+	return ERROR;
+}
+long long get_colour(int block) {
+	return properties(ELEMS_TYPES[get_elem(block, properties(ERROR))]).COLOUR;;
+}
+
 __device__ double hypot2(double3 p) {
 	return p.x * p.x + p.y * p.y + p.z * p.z;
 }
@@ -173,13 +183,6 @@ __device__ bool operator== (double3 a, double3 b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-__device__ properties combine(properties p, properties _p) {
-	p.EPSILON = sqrt(p.EPSILON * _p.EPSILON);
-	p.SIGMA = (p.SIGMA + _p.SIGMA) / 2;
-	p.Q = (p.Q * _p.Q) / sqrt(abs(p.Q * _p.Q));
-	return p;
-}
-
 __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
 	d -= round(d);
@@ -197,7 +200,7 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, doubl
 #endif
 	
 #ifdef ENABLE_EM
-	double d_2 = 1 / d2,
+	double d_2 = 1. / d2,
 		d_1 = sqrt(d_2);
 	a_em += d_2 * d_1 * d;
 #endif 
@@ -212,11 +215,11 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		r_2 = 1. / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
-	e_lj += (r_6 - 1) * r_6;
+	e_lj += (r_6 - 1.) * r_6;
 #endif
 
 #ifdef ENABLE_EM
-	double d_1 = 1 / sqrt(d2);
+	double d_1 = 1. / sqrt(d2);
 	e_em += d_1;
 #endif
 }
@@ -229,26 +232,24 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	double3 p = 1. / SIZE * vec_pos.get(ind),									\
 	v = vec_vel.get(ind);														\
 																				\
-	int props_ind = 0;															\
-	while(bid / (double)GRID_SIZE > props[0].divisions[++props_ind]);			\
-	properties __P = props[props_ind - 1];										\
+	properties __P = props[get_elem(bid, props[0])];							\
 																				\
 	double lj_coeff[ELEMS_NUM];													\
 	double em_coeff[ELEMS_NUM];													\
 	double ss_ss[ELEMS_NUM];													\
 	for(int i = 0; i < ELEMS_NUM; i++) {										\
-		properties _P = combine(__P, props[i]);									\
+		properties _P = props[i];												\
 		ss_ss[i] = (SIZE * SIZE) / (_P.SIGMA * _P.SIGMA);						\
 		__COEFFS__																\
 	}																			\
 	__shared__ double3 _pos[BLOCK_SIZE];										\
-	props_ind = 0;																\
+	int props_ind = 0;															\
 	for (int i = 0; i < gridDim.x; i++) {										\
 		__syncthreads();														\
 		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);				\
 		__syncthreads();														\
 																				\
-		if (i / (double)GRID_SIZE > __P.divisions[props_ind + 1])				\
+		if (props_ind != get_elem(i, __P))										\
 			props_ind++;														\
 																				\
 		__INIT__																\
@@ -265,13 +266,17 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	p *= SIZE;
 
 
-__global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
+__global__ 
+//__launch_bounds__(BLOCK_SIZE, 1024 / BLOCK_SIZE)
+void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	double3 a_lj = d3_0;
 	double3 a_em = d3_0;
 	
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 48. * _P.EPSILON * SIZE / _P.SIGMA / _P.SIGMA / _P.M;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) * _P.Q * _P.Q / SIZE / SIZE / _P.M;
+		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);
+		double sigma = (_P.SIGMA + __P.SIGMA) / 2;
+		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / __P.M;
+		em_coeff[i] = 1. / (4. * PI * EPSILON0) * __P.Q * _P.Q / SIZE / SIZE / __P.M;
 	,
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
@@ -291,13 +296,16 @@ __global__ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	vec_vel.set(ind, v);
 
 }
-__global__ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
+__global__
+//__launch_bounds__(BLOCK_SIZE, 1024 / BLOCK_SIZE)
+void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
 	
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 2. * _P.EPSILON;
-		em_coeff[i] = 1. / (8. * PI * EPSILON0) * _P.Q * _P.Q / SIZE;
+		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);
+		lj_coeff[i] = 2. * epsilon;
+		em_coeff[i] = 1. / (8. * PI * EPSILON0) * __P.Q * _P.Q / SIZE;
 	,
 		double de_lj = 0;
 		double de_em = 0;
@@ -315,9 +323,13 @@ __global__ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties
 
 void euler_steps(int steps) {
 #ifndef __INTELLISENSE__
+	cudaDeviceSynchronize();
 	for(int i = 0; i < steps; i++)
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, props);
 #endif
+	
+	cudaDeviceSynchronize();
+
 	vec_pos.invalidate();
 	vec_vel.invalidate();
 
@@ -326,12 +338,17 @@ void euler_steps(int steps) {
 		total_energy += _energy[i];
 	}
 
+	cudaDeviceSynchronize();
+
 #ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
 #endif
-	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
-}
+	cudaDeviceSynchronize();
 
+	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
+
+	cudaDeviceSynchronize();
+}
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);

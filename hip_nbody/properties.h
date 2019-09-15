@@ -1,7 +1,7 @@
 #pragma once
 
 #define ENABLE_EM
-#define ENABLE_LJ
+//#define ENABLE_LJ
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
@@ -37,7 +37,7 @@ constexpr double _sqrt(double a) {
 }
 
 constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
-constexpr int GRID_SIZE = 10; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
+constexpr int GRID_SIZE = 20; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -57,7 +57,7 @@ constexpr double V = 0;// _sqrt(3 * K * T / M);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 3e-16;
-constexpr int SKIPS = 50;
+constexpr int SKIPS = 1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -65,7 +65,7 @@ enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON, ERROR};
 
 constexpr int ELEMS_NUM = 2;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.5, 1 };
+constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49, 1 };
 constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM, ASTATINE};
 
 struct properties {
@@ -86,7 +86,7 @@ struct properties {
 			SIGMA = 0.263e-9;
 			M = 0.004 / NA;
 			EPSILON = 6.03 * K;
-			Q = -E;
+			Q = E;
 			COLOUR = 0xFF0000FF;
 			break;
 		case PROTON:
@@ -113,5 +113,4 @@ struct properties {
 	properties(ELEMS e) {
 		set_properties(e);
 	}
-	static long long get_colour(int block);
 };

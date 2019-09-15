@@ -59,8 +59,14 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_61,sm_61</CodeGeneration>
+      <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <GenerateLineInfo>true</GenerateLineInfo>
+      <PtxAsOptionV>true</PtxAsOptionV>
+      <InterleaveSourceInPTX>true</InterleaveSourceInPTX>
     </CudaCompile>
+    <CudaLink>
+      <GPUDebugInfo>true</GPUDebugInfo>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -70,6 +76,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>SFML_STATIC;WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../SFML/include;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <StructMemberAlignment>8Bytes</StructMemberAlignment>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FloatingPointModel>Strict</FloatingPointModel>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -82,8 +94,15 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_61,sm_61</CodeGeneration>
+      <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <GenerateLineInfo>true</GenerateLineInfo>
     </CudaCompile>
+    <CudaLink>
+      <GPUDebugInfo>false</GPUDebugInfo>
+    </CudaLink>
+    <CudaLink>
+      <Optimization>O2</Optimization>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />

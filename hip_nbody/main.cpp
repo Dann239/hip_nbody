@@ -63,13 +63,6 @@ double deflect(double& p) {
 	return p;
 }
 
-long long properties::get_colour(int block) {
-	for (int i = 1; i <= ELEMS_NUM; i++)
-		if (block / (double)GRID_SIZE <= ELEMS_DIVISIONS[i])
-			return properties(ELEMS_TYPES[i - 1]).COLOUR;
-	return properties(ERROR).COLOUR;;
-}
-
 int main() {
 	print_chars();
 	//return 0;
@@ -82,14 +75,14 @@ int main() {
 	force_energy_calc();
 
 	//while(window_is_open()) {
-	for (int i = 0; i < 5; i++) {
+	for(int i = 0; i < 1; i++) {
 		long long t0 = clock();
 		euler_steps(SKIPS);
 
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 		for (int i = 0; i < AMOUNT; i++)
-			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, (int)properties::get_colour(i / BLOCK_SIZE));
+			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, (int)get_colour(i / BLOCK_SIZE));
 		window_show();
 	#endif
 

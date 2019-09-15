@@ -15,3 +15,5 @@ void force_energy_calc();
 
 void print_err(bool force = true);
 void print_chars();
+
+long long get_colour(int block);
