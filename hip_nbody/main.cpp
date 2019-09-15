@@ -89,7 +89,7 @@ int main() {
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 		for (int i = 0; i < AMOUNT; i++)
-			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, properties::get_colour(i / BLOCK_SIZE));
+			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, (int)properties::get_colour(i / BLOCK_SIZE));
 		window_show();
 	#endif
 
