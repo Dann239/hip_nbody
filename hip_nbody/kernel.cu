@@ -332,13 +332,9 @@ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 
 void euler_steps(int steps) {
 #ifndef __INTELLISENSE__
-	cudaDeviceSynchronize();
 	for(int i = 0; i < steps; i++)
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, props);
 #endif
-	
-	cudaDeviceSynchronize();
-
 	vec_pos.invalidate();
 	vec_vel.invalidate();
 
@@ -347,16 +343,11 @@ void euler_steps(int steps) {
 		total_energy += _energy[i];
 	}
 
-	cudaDeviceSynchronize();
-
 #ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
 #endif
-	cudaDeviceSynchronize();
-
 	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
 
-	cudaDeviceSynchronize();
 }
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
