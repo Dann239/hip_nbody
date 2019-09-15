@@ -36,7 +36,7 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int BLOCK_SIZE = 512; //must be 32 * N, The bigger the better generally
+constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
 constexpr int GRID_SIZE = 10; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
