@@ -129,7 +129,7 @@
     <Property Name="ProfileOptionEnableKernelCounter" Value="True" />
     <Property Name="ProfileOptionEnableKernelSkip" Value="True" />
     <Property Name="ProfileOptionKernelCounterValue" Value="1" />
-    <Property Name="ProfileOptionKernelSkipValue" Value="1" />
+    <Property Name="ProfileOptionKernelSkipValue" Value="3" />
     <Property Name="ProfileOptionSkipStateRestore" Value="True" />
     <Property Name="RecurseDirectoriesToSynchronize" Value="False" />
     <Property Name="WorkingDirectory" Value="D:\info\hip_nbody\hip_nbody\" />

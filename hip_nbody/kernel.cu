@@ -212,6 +212,7 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, doubl
 __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
 	d -= round(d);
+
 	double d2 = hypot2(d);
 
 #ifdef ENABLE_LJ
@@ -243,7 +244,9 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	double ss_ss[ELEMS_NUM];													\
 	for(int i = 0; i < ELEMS_NUM; i++) {										\
 		properties _P = props[i];												\
-		ss_ss[i] = (SIZE * SIZE) / (_P.SIGMA * _P.SIGMA);						\
+		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);						\
+		double sigma = (_P.SIGMA + __P.SIGMA) / 2;								\
+		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
 		__COEFFS__																\
 	}																			\
 	__shared__ double3 _pos[BLOCK_SIZE];										\
@@ -253,8 +256,9 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		__syncthreads();														\
 		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);				\
 																				\
-		if ( invalid_elem(i, __P, props_ind + 1 ))								\
+		if ( invalid_elem(i, __P, props_ind ))									\
 			props_ind++;														\
+																				\
 																				\
 		__INIT__																\
 																				\
@@ -278,8 +282,6 @@ void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	double3 a_em = d3_0;
 	
 	GPU_PAIR_INTERACTION_WRAPPER(
-		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);
-		double sigma = (_P.SIGMA + __P.SIGMA) / 2;
 		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / __P.M;
 		em_coeff[i] = 1. / (4. * PI * EPSILON0) * __P.Q * _P.Q / SIZE / SIZE / __P.M;
 	,
@@ -308,7 +310,6 @@ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_em = 0;
 	
 	GPU_PAIR_INTERACTION_WRAPPER(
-		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);
 		lj_coeff[i] = 2. * epsilon;
 		em_coeff[i] = 1. / (8. * PI * EPSILON0) * __P.Q * _P.Q / SIZE;
 	,
