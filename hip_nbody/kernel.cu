@@ -249,12 +249,15 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
 		__COEFFS__																\
 	}																			\
-	__shared__ double3 _pos[BLOCK_SIZE];										\
+	__shared__ double _posx[BLOCK_SIZE];										\
+	__shared__ double _posy[BLOCK_SIZE];										\
+	__shared__ double _posz[BLOCK_SIZE];										\
 	int props_ind = 0;															\
 	for (int i = 0; i < gridDim.x; i++) {										\
 																				\
 		__syncthreads();														\
-		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);				\
+		double3 _pos = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);			\
+		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
 																				\
 		if ( invalid_elem(i, __P, props_ind ))									\
 			props_ind++;														\
@@ -264,7 +267,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 																				\
 		__syncthreads();														\
 		for (int j = 0; j < blockDim.x; j++) {									\
-			double3 _p = _pos[j];												\
+			double3 _p = double3({_posx[j],_posy[j],_posz[j]});					\
 			if (i != bid || j != tid) {											\
 				__BODY__														\
 			}																	\

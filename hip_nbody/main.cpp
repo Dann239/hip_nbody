@@ -74,8 +74,8 @@ int main() {
 	window_init();
 	force_energy_calc();
 
-	//while(window_is_open()) {
-	for(int i = 0; i < 2; i++) {
+	while(window_is_open()) {
+	//for(int i = 0; i < 2; i++) {
 		long long t0 = clock();
 		euler_steps(SKIPS);
 
