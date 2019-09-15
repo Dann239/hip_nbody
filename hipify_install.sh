@@ -3,9 +3,9 @@ cd hipify
 mkdir git cmake
 cd git
 
-git clone https://github.com/ROCm-Developer-Tools/HIP.git
-git clone https://github.com/llvm-mirror/llvm.git
-git clone https://github.com/llvm-mirror/clang.git
+git clone --depth 1 https://github.com/ROCm-Developer-Tools/HIP.git
+git clone --depth 1 https://github.com/llvm-mirror/llvm.git
+git clone --depth 1 https://github.com/llvm-mirror/clang.git
 
 cd ../cmake
 mkdir build_llvm build_clang build_hipify dist_llvm_clang dist_hipify

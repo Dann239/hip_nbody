@@ -94,7 +94,7 @@ void alloc() {
 	cudaHostAlloc(&_energy, MEM_LEN, cudaHostAllocMapped);
 
 	cudaMalloc(&props, ELEMS_NUM * sizeof(properties));
-	static properties _props[ELEMS_NUM];
+	static properties* _props = (properties*)malloc(ELEMS_NUM * sizeof(properties));
 	for(int i = 0; i < ELEMS_NUM; i++) _props[i].set_properties(ELEMS_TYPES[i]);
 	cudaMemcpy(props, _props, ELEMS_NUM * sizeof(properties), cudaMemcpyHostToDevice);
 }
@@ -118,26 +118,6 @@ void pull_values() {
 void push_values() {
 	vec_pos.set(pos);
 	vec_vel.set(vel);
-}
-
-void print_chars() {
-	cudaDeviceProp chars;
-	cudaGetDeviceProperties(&chars,0);
-	printf("major: %d\n", chars.major);
-	printf("minor: %d\n", chars.minor);
-	printf("canMapHostMemory: %d\n", chars.canMapHostMemory);
-	printf("multiProcessorCount: %d\n", chars.multiProcessorCount);
-	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
-	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
-	printf("totalGlobalMem: %zu\n", chars.totalGlobalMem);
-	printf("regsPerBlock: %d\n", chars.regsPerBlock);
-#ifndef __HIPCC__
-    printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
-	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
-	printf("warpSize: %d\n", chars.warpSize);
-#endif
-
-	
 }
 
 void print_err(bool force) {
@@ -362,4 +342,46 @@ void force_energy_calc() {
 	for (int i = 0; i < AMOUNT; i++) {
 		total_energy += _energy[i];
 	}
+}
+
+void print_chars() {
+	cudaDeviceProp chars;
+	cudaFuncAttributes attr;
+	cudaGetDeviceProperties(&chars, 0);
+	cudaFuncGetAttributes(&attr, euler_gpu);
+	
+	printf("major: %d\n", chars.major);
+	printf("minor: %d\n", chars.minor);
+	printf("canMapHostMemory: %d\n", chars.canMapHostMemory);
+	printf("multiProcessorCount: %d\n", chars.multiProcessorCount);
+	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
+	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
+	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
+	printf("regsPerBlock: %d\n", chars.regsPerBlock);
+	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
+#ifndef __HIPCC__
+	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
+	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
+	printf("warpSize: %d\n", chars.warpSize);
+#endif
+
+	printf("\neuler_gpu:\n");
+	printf("binaryVersion: %d\n", attr.binaryVersion);
+	printf("ptxVersion: %d\n", attr.ptxVersion);
+	printf("maxThreadsPerBlock: %d\n", attr.maxThreadsPerBlock);
+	printf("numRegs: %d\n", attr.numRegs);
+	printf("localSizeBytes: %zu\n", attr.localSizeBytes);
+	
+	int numBlocks;
+	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, BLOCK_SIZE, 0);
+	printf("\nOccupancy: %f\n", (double) (numBlocks * BLOCK_SIZE / chars.warpSize) / (chars.maxThreadsPerMultiProcessor / chars.warpSize));
+
+	/*
+	for (int i = 1; i <= 1024; i++) {
+		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, i, 0);
+		double occ = (double)(numBlocks * BLOCK_SIZE / chars.warpSize) / (chars.maxThreadsPerMultiProcessor / chars.warpSize);
+		if(occ >= 0.2)
+			printf("BlockSize = %d; Occupancy = %f\n", i, occ);
+	}
+	*/
 }
