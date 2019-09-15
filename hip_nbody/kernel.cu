@@ -14,6 +14,7 @@ void __syncthreads() {}
 #include "properties.h"
 
 #include <iostream>
+#include <stdio.h>
 using namespace std;
 
 #define d3_0 double3({0.,0.,0.})
@@ -220,7 +221,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 #endif
 }
 
-extern __shared__ double3 _pos[];
+__shared__ double3 _pos[];
 #define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
 	int tid = threadIdx.x,														\
 	bid = blockIdx.x,															\
@@ -236,7 +237,6 @@ extern __shared__ double3 _pos[];
 	double lj_coeff[ELEMS_NUM];													\
 	double em_coeff[ELEMS_NUM];													\
 	double ss_ss[ELEMS_NUM];													\
-																				\
 	for(int i = 0; i < ELEMS_NUM; i++) {										\
 		properties _P = combine(__P, props[i]);									\
 		ss_ss[i] = (SIZE * SIZE) / (_P.SIGMA * _P.SIGMA);						\
@@ -328,7 +328,7 @@ void euler_steps(int steps) {
 	}
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, BLOCK_SIZE * sizeof(double3)  >>> (vec_pos, vec_vel, energy, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, BLOCK_SIZE * sizeof(double3) >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
 }
@@ -347,9 +347,10 @@ void force_energy_calc() {
 void print_chars() {
 	cudaDeviceProp chars;
 	cudaFuncAttributes attr;
-	cudaGetDeviceProperties(&chars, 0);
-	cudaFuncGetAttributes(&attr, euler_gpu);
+	int numBlocks;
 	
+	cudaGetDeviceProperties(&chars, 0);
+	printf("Device:\n");
 	printf("major: %d\n", chars.major);
 	printf("minor: %d\n", chars.minor);
 	printf("canMapHostMemory: %d\n", chars.canMapHostMemory);
@@ -357,6 +358,7 @@ void print_chars() {
 	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
+	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
 	printf("regsPerBlock: %d\n", chars.regsPerBlock);
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 #ifndef __HIPCC__
@@ -365,23 +367,38 @@ void print_chars() {
 	printf("warpSize: %d\n", chars.warpSize);
 #endif
 
+	cudaFuncGetAttributes(&attr, euler_gpu);
+	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, BLOCK_SIZE, 0);
 	printf("\neuler_gpu:\n");
 	printf("binaryVersion: %d\n", attr.binaryVersion);
 	printf("ptxVersion: %d\n", attr.ptxVersion);
 	printf("maxThreadsPerBlock: %d\n", attr.maxThreadsPerBlock);
 	printf("numRegs: %d\n", attr.numRegs);
 	printf("localSizeBytes: %zu\n", attr.localSizeBytes);
+	printf("sharedSizeBytes: %zu\n", attr.sharedSizeBytes);
+	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double) (numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
 	
-	int numBlocks;
-	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, BLOCK_SIZE, 0);
-	printf("\nOccupancy: %f\n", (double) (numBlocks * BLOCK_SIZE / chars.warpSize) / (chars.maxThreadsPerMultiProcessor / chars.warpSize));
+	cudaFuncGetAttributes(&attr, energy_gpu);
+	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, energy_gpu, BLOCK_SIZE, 0);
+	printf("\nenergy_gpu:\n");
+	printf("binaryVersion: %d\n", attr.binaryVersion);
+	printf("ptxVersion: %d\n", attr.ptxVersion);
+	printf("maxThreadsPerBlock: %d\n", attr.maxThreadsPerBlock);
+	printf("numRegs: %d\n", attr.numRegs);
+	printf("localSizeBytes: %zu\n", attr.localSizeBytes);
+	printf("sharedSizeBytes: %zu\n", attr.sharedSizeBytes);
+	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double)(numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
 
-	/*
-	for (int i = 1; i <= 1024; i++) {
-		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, i, 0);
-		double occ = (double)(numBlocks * BLOCK_SIZE / chars.warpSize) / (chars.maxThreadsPerMultiProcessor / chars.warpSize);
-		if(occ >= 0.2)
-			printf("BlockSize = %d; Occupancy = %f\n", i, occ);
+
+	printf("\nBest BlockSize options:\n");
+	double max = 0;
+	for (int i = chars.regsPerBlock / attr.numRegs / 32 * 32; i > 0; i-=32) {
+		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, i, i * sizeof(double3));
+		double occ = (double)(numBlocks * i / chars.warpSize) / (chars.maxThreadsPerMultiProcessor / chars.warpSize);
+		if (occ > max) {
+			printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", i, numBlocks, occ);
+			//max = occ;
+		}
 	}
-	*/
+	
 }

@@ -36,8 +36,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int GRID_SIZE = 5120 / 512; //optimal is SM * N, SM=10 for 1060, SM=60 for VEGA, SM=80 for TITAN
-constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is generally optimal
+constexpr int BLOCK_SIZE = 512; //must be 32 * N, The bigger the better generally
+constexpr int GRID_SIZE = 10; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -57,7 +57,7 @@ constexpr double V = 0;// _sqrt(3 * K * T / M);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 3e-16;
-constexpr int SKIPS = 10;
+constexpr int SKIPS = 50;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
