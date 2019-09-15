@@ -128,9 +128,13 @@ void print_err(bool force) {
 	cout << cudaGetErrorString(err) << endl;
 }
 
+__host__ __device__ bool invalid_elem(int block, properties p, int i) {
+	return block / (double)GRID_SIZE < p.divisions[i];
+}
+
 __host__ __device__ int get_elem(int block, properties p) {
 	for (int i = 1; i <= ELEMS_NUM; i++)
-		if (block / (double)GRID_SIZE < p.divisions[i])
+		if (invalid_elem(block, p, i))
 			return i - 1;
 	return ERROR;
 }
@@ -245,15 +249,16 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	__shared__ double3 _pos[BLOCK_SIZE];										\
 	int props_ind = 0;															\
 	for (int i = 0; i < gridDim.x; i++) {										\
+																				\
 		__syncthreads();														\
 		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);				\
-		__syncthreads();														\
 																				\
-		if (props_ind != get_elem(i, __P))										\
+		if ( invalid_elem(i, __P, props_ind + 1 ))								\
 			props_ind++;														\
 																				\
 		__INIT__																\
 																				\
+		__syncthreads();														\
 		for (int j = 0; j < blockDim.x; j++) {									\
 			double3 _p = _pos[j];												\
 			if (i != bid || j != tid) {											\

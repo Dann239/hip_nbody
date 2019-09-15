@@ -1,7 +1,7 @@
 #pragma once
 
 #define ENABLE_EM
-//#define ENABLE_LJ
+#define ENABLE_LJ
 
 constexpr double _cbrt(double a) {
 	if (a < 0)

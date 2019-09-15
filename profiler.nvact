@@ -119,7 +119,7 @@
     <Property Name="EnableToolsExtPushPopRangeTrace" Value="True" />
     <Property Name="EnableToolsExtResourceNaming" Value="True" />
     <Property Name="EnableToolsExtStartEndRangeTrace" Value="True" />
-    <Property Name="ExperimentsCustomConfiguration" Value="AchievedFlops:1:1&lt;1&lt;2&lt;1&lt;1&lt;1&lt;1&lt;2&lt;1&lt;1&lt;2&lt;1&lt;2&lt;2&lt;2&lt;4$AchievedOccupancy:2:$InstructionStats:3:$InstructionCount:4:True&lt;True$DivergentBranch:5:$MemoryTransactions:6:$BranchStats:7:$IssueEfficiency:8:$MemoryGlobal:9:$MemoryLocal:10:$MemoryShared:11:$MemoryCaches:12:$MemoryBuffers:13:$PipeUtilization:14:$MemoryAtomics:15:$MemoryTexture:16:" />
+    <Property Name="ExperimentsCustomConfiguration" Value="AchievedFlops:1:1&lt;1&lt;2&lt;1&lt;1&lt;1&lt;1&lt;2&lt;1&lt;1&lt;2&lt;1&lt;2&lt;2&lt;2&lt;4$AchievedOccupancy:2:$InstructionStats:3:$InstructionCount:4:True&lt;True$DivergentBranch:5:$MemoryTransactions:6:$BranchStats:7:$IssueEfficiency:8:$MemoryGlobal:9:$MemoryLocal:10:$MemoryShared:11:$MemoryCaches:12:$MemoryBuffers:13:$PipeUtilization:14:$MemoryAtomics:15:$MemoryTexture:16:$AchievedIops:17:1&lt;1&lt;2&lt;2&lt;2&lt;1&lt;1" />
     <Property Name="ExperimentsPresetConfiguration" Value="Custom" />
     <Property Name="ExtensionsToSynchronize" Value="*;" />
     <Property Name="InitialReport" Value="CudaLaunches" />
