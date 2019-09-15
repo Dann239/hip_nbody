@@ -9,17 +9,6 @@
 #include <math.h>
 using namespace std;
 
-double* pos[3];
-double* vel[3];
-
-#ifndef SFML_STATIC
-void window_init() {}
-void window_show() {}
-bool window_is_open() { return true; }
-void window_delete() {}
-void window_draw_point(double x, double y, bool color = false) {}
-#endif
-
 void randomize() {
 	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
 	static bool grid[grid_size][grid_size][grid_size];

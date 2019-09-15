@@ -1,8 +1,4 @@
-cp ../main.cpp main.cpp
-cp ../kernel.h kernel.h
-cp ../window.h window.h
-cp ../properties.h properties.h
-rm a.out
-hipify-clang --extra-arg="-std=c++14" -o=kernel.cpp ../kernel.cu &&\
-hipcc main.cpp kernel.cpp -std=c++14 &&\
-./a.out
+mkdir /tmp/nbody 2>/dev/null
+cp ../*.c ../*.h ../*.cpp ../*.hpp ../*.cuh -t /tmp/nbody 2>/dev/null
+hipify-clang --extra-arg="-std=c++14" -o=/tmp/nbody/kernel.cpp ../kernel.cu &&\
+hipcc /tmp/nbody/*.cpp -std=c++14 -o=/tmp/nbody/nbody.run --run

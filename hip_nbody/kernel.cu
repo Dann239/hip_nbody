@@ -70,6 +70,9 @@ struct vec {
 	}
 };
 
+double* pos[3];
+double* vel[3];
+
 vec vec_pos, vec_vel;
 static double* energy;
 static double* _energy;
@@ -100,7 +103,7 @@ void alloc() {
 	cudaHostAlloc(&_energy, MEM_LEN, cudaHostAllocMapped);
 
 	cudaMalloc(&props, GRID_SIZE * sizeof(properties));
-	static properties _props[GRID_SIZE];
+	static properties* _props = new properties[GRID_SIZE];
 	for (int i = 0; i < GRID_SIZE; i++) _props[i] = properties(i);
 	cudaMemcpy(props, _props, GRID_SIZE * sizeof(properties), cudaMemcpyHostToDevice);
 }
@@ -244,6 +247,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 #endif
 }
 
+extern __shared__ double3 _pos[];
 #define GPU_PAIR_INTERACTION_WRAPPER(__INIT__, __BODY__, __POST__)							\
 	int tid = threadIdx.x,																	\
 	bid = blockIdx.x,																		\
@@ -253,7 +257,6 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	v = vec_vel.get(ind);																	\
 																							\
 	properties P = props[bid];																\
-	__shared__ double3 _pos[BLOCK_SIZE];													\
 	for (int i = 0; i < gridDim.x; i++) {													\
 		__syncthreads();																	\
 		_pos[tid] = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);							\
@@ -316,7 +319,7 @@ __global__ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties
 void euler_steps(int steps) {
 #ifndef __INTELLISENSE__
 	for(int i = 0; i < steps; i++)
-		euler_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, props);
+		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, BLOCK_SIZE * sizeof(double3) >>> (vec_pos, vec_vel, props);
 #endif
 	vec_pos.invalidate();
 	vec_vel.invalidate();
@@ -327,14 +330,14 @@ void euler_steps(int steps) {
 	}
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, BLOCK_SIZE * sizeof(double3)  >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
 }
 
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE >>> (vec_pos, vec_vel, energy, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, BLOCK_SIZE * sizeof(double3) >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpy(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
 	total_energy = 0;

@@ -55,4 +55,10 @@ void window_draw_point(double x, double y, int colour) {
 	window->draw(point);
 }
 
+#else
+void window_init() {}
+void window_show() {}
+bool window_is_open() { return true; }
+void window_delete() {}
+void window_draw_point(double x, double y, bool color = false) {}
 #endif
