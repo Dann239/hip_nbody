@@ -63,6 +63,13 @@ double deflect(double& p) {
 	return p;
 }
 
+long long properties::get_colour(int block) {
+	for (int i = 1; i <= ELEMS_NUM; i++)
+		if (1. * block / GRID_SIZE <= ELEMS_DIVISIONS[i])
+			return properties(ELEMS_TYPES[i - 1]).COLOUR;
+	return properties(ERROR).COLOUR;;
+}
+
 int main() {
 	print_chars();
 	//return 0;

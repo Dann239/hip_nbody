@@ -62,7 +62,7 @@ constexpr int SKIPS = 20;
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y, Z};
-enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON};
+enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON, ERROR};
 
 constexpr int ELEMS_NUM = 2;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.5, 1 };
@@ -70,7 +70,8 @@ constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM, ASTATINE};
 
 struct properties {
 	double SIGMA, EPSILON, M, Q;
-	unsigned int COLOUR;
+	unsigned long long COLOUR;
+	double divisions[ELEMS_NUM + 1];
 	void set_properties(ELEMS type) {
 		switch (type)
 		{
@@ -106,6 +107,12 @@ struct properties {
 			SIGMA = EPSILON = M = Q = -1;
 			COLOUR = 0x777777FF;
 		}
+		for(int i = 0; i <= ELEMS_NUM; i++)
+			divisions[i] = ELEMS_DIVISIONS[i];
 	}
-	properties(int block = 0);
+	properties(ELEMS e) {
+		set_properties(e);
+	}
+	properties(){}
+	static long long get_colour(int block);
 };
