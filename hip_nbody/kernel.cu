@@ -1,12 +1,11 @@
 #include "cuda_runtime.h"
 
-#ifndef __HIPCC__
+#ifndef __HIP__
 #include "device_launch_parameters.h"
 #include "cuda_runtime_api.h"
-#include "cuda_occupancy.h"
 #endif
 
-#ifdef __INTELLISENSE__
+#if defined __INTELLISENSE__
 void __syncthreads() {}
 #define __launch_bounds__(X,Y)
 #endif
@@ -24,7 +23,7 @@ struct vec {
 	double* v_gpu[3];
 	double* v_cpu[3];
 	long long validity;
-	
+
 	__device__ double3 get(int i) const {
 		return double3({ 
 			v_gpu[X][i],
@@ -36,7 +35,7 @@ struct vec {
 		v_gpu[Y][i] = p.y;
 		v_gpu[Z][i] = p.z;
 	}
-	
+
 	void invalidate() {
 		for (int i = 0; i < 3; i++) {
 			cudaMemcpyAsync(v_cpu[i], v_gpu[i], MEM_LEN, cudaMemcpyDeviceToHost);
@@ -202,12 +201,12 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, doubl
 		_2r_14__r_8 = (r_6 - .5) * r_8;
 	a_lj += (_2r_14__r_8 * d);
 #endif
-	
+
 #ifdef ENABLE_EM
 	double d_2 = 1. / d2,
 		d_1 = sqrt(d_2);
 	a_em += d_2 * d_1 * d;
-#endif 
+#endif
 }
 __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
@@ -278,12 +277,12 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	p *= SIZE;
 
 
-__global__ 
+__global__
 //__launch_bounds__(BLOCK_SIZE, 1024 / BLOCK_SIZE)
 void euler_gpu(vec vec_pos, vec vec_vel, properties* props) {
 	double3 a_lj = d3_0;
 	double3 a_em = d3_0;
-	
+
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / __P.M;
 		em_coeff[i] = 1. / (4. * PI * EPSILON0) * __P.Q * _P.Q / SIZE / SIZE / __P.M;
@@ -311,7 +310,7 @@ __global__
 void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
-	
+
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 2. * epsilon;
 		em_coeff[i] = 1. / (8. * PI * EPSILON0) * __P.Q * _P.Q / SIZE;
@@ -324,7 +323,7 @@ void energy_gpu (vec vec_pos, vec vec_vel, double* energy, properties* props) {
 		e_lj += lj_coeff[props_ind] * de_lj;
 		e_em += em_coeff[props_ind] * de_em;
 	);
-	
+
 	double e_k = __P.M * hypot2(v) / 2.;
 
 	energy[ind] = e_k + e_em + e_lj;
@@ -362,7 +361,7 @@ void force_energy_calc() {
 
 void print_chars() {
 	cudaDeviceProp chars;
-	
+
 	cudaGetDeviceProperties(&chars, 0);
 	printf("Device:\n");
 	printf("major: %d\n", chars.major);
@@ -373,11 +372,12 @@ void print_chars() {
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
 	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
 
-#ifndef __HIPCC__
 	printf("regsPerBlock: %d\n", chars.regsPerBlock);
+	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
+
+#ifndef __HIPCC__
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
-	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("warpSize: %d\n", chars.warpSize);
 
 	cudaFuncAttributes attr;
@@ -389,20 +389,19 @@ void print_chars() {
 	printf("numRegs: %d\n", attr.numRegs);
 	printf("localSizeBytes: %zu\n", attr.localSizeBytes);
 	printf("sharedSizeBytes: %zu\n", attr.sharedSizeBytes);
-
+#endif
 
 	int numBlocks;
-	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, BLOCK_SIZE, 0);
+	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, BLOCK_SIZE, 0);
 	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double) (numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
-	
+
 
 	printf("\nBest BlockSize options:\n");
 	for (int i = 128; i <= 1024 ; i *= 2) {
-		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, euler_gpu, i, 0);
+		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, i, 0);
 		double occ = (double)(numBlocks * i) / (chars.maxThreadsPerMultiProcessor);
-	
+
 		printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", i, numBlocks, occ);
 	}
-#endif
 
 }
