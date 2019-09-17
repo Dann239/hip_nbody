@@ -342,3 +342,4 @@ hip_nbody/data/*.csv
 SFML/
 *.run
 *.ptx
+*.nvact
