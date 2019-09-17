@@ -24,7 +24,7 @@ void window_show() {
 
 	static queue<Event> events;
 	static sf::Event event;
-	
+
 	while (window->pollEvent(event))
 		events.push(event);
 
@@ -45,7 +45,7 @@ void window_delete() {
 	delete window;
 }
 void window_draw_point(double x, double y, int colour) {
-	
+
 	const float r = SCREEN_SIZE * 4e-3f;
 	static CircleShape point;
 	point.setRadius(r);
@@ -60,5 +60,5 @@ void window_init() {}
 void window_show() {}
 bool window_is_open() { return true; }
 void window_delete() {}
-void window_draw_point(double x, double y, bool color = false) {}
+void window_draw_point(double x, double y, int colour) {}
 #endif
