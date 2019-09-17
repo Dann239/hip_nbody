@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 
-#ifndef __HIP__
+#ifndef __HIPCC__
 #include "device_launch_parameters.h"
 #include "cuda_runtime_api.h"
 #endif
@@ -25,7 +25,7 @@ struct vec {
 	long long validity;
 
 	__device__ double3 get(int i) const {
-		return double3({ 
+		return double3({
 			v_gpu[X][i],
 			v_gpu[Y][i],
 			v_gpu[Z][i] });
@@ -391,6 +391,7 @@ void print_chars() {
 	printf("sharedSizeBytes: %zu\n", attr.sharedSizeBytes);
 #endif
 
+#ifndef __HCC__
 	int numBlocks;
 	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, BLOCK_SIZE, 0);
 	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double) (numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
@@ -403,5 +404,5 @@ void print_chars() {
 
 		printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", i, numBlocks, occ);
 	}
-
+#endif
 }
