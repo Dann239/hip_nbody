@@ -14,7 +14,7 @@ cd ../cmake
 
 mkdir build dist
 mkdir build/llvm build/clang build/hip build/hipify
-mkdir dist/llvm dist/clang dist/hip
+mkdir dist/llvm dist/clang dist/hip dist/hipify
 
 cd build
 export MAKEFLAGS="-j$(nproc)"
@@ -35,6 +35,6 @@ cmake --build . --target install
 cd ..
 
 cd hipify
-cmake -DCMAKE_PREFIX_PATH="$HIP_R/cmake/dist/llvm;$HIP_R/cmake/dist/clang" -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/hip -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
+cmake -DCMAKE_PREFIX_PATH="$HIP_R/cmake/dist/llvm;$HIP_R/cmake/dist/clang;$HIP_R/cmake/dist/hip" -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/hipify -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
 cmake --build . --target install
 cd ..

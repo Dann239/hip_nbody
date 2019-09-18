@@ -7,7 +7,6 @@
 
 #if defined __INTELLISENSE__
 void __syncthreads() {}
-#define __launch_bounds__(X,Y)
 #endif
 
 #include "kernel.h"
@@ -373,9 +372,9 @@ void print_chars() {
 	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
 
 	printf("regsPerBlock: %d\n", chars.regsPerBlock);
-	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 
 #ifndef __HIPCC__
+	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
 	printf("warpSize: %d\n", chars.warpSize);
