@@ -13,8 +13,8 @@ git clone --depth 1 https://github.com/ROCm-Developer-Tools/clang.git
 cd ../cmake
 
 mkdir build dist
-mkdir build/llvm build/clang build/hipify
-mkdir dist/llvm dist/clang dist/hipify
+mkdir build/llvm build/clang build/hip build/hipify
+mkdir dist/llvm dist/clang dist/hip dist/hipify
 
 cd build
 export MAKEFLAGS="-j$(nproc)"
@@ -26,6 +26,11 @@ cd ..
 
 cd clang
 cmake -DCMAKE_PREFIX_PATH=$HIP_R/cmake/dist/llvm -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/llvm -DCMAKE_BUILD_TYPE=Release $HIP_R/git/clang
+cmake --build . --target install
+cd ..
+
+cd hip
+cmake -DCMAKE_PREFIX_PATH="$HIP_R/cmake/dist/llvm;$HIP_R/cmake/dist/clang" -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/hip -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP
 cmake --build . --target install
 cd ..
 
