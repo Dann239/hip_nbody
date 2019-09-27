@@ -26,10 +26,13 @@ cmake -DCMAKE_PREFIX_PATH=$HIP_R/dist -DCMAKE_INSTALL_PREFIX=$HIP_R/dist -DCMAKE
 cmake --build . --target install
 cd ..
 
+make_install llvm ROCm-Developer-Tools
+make_install clang ROCm-Developer-Tools
+
 make_install hcc RadeonOpenCompute
 make_install HIP ROCm-Developer-Tools
 
-smkdir hipify
+mkdir hipify
 cd hipify
 cmake -DCMAKE_PREFIX_PATH=$HIP_R/dist -DCMAKE_INSTALL_PREFIX=$HIP_R/dist -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
 cmake --build . --target install
