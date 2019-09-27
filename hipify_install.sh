@@ -4,32 +4,27 @@ cd hipify
 HIP_R=$(pwd)
 
 mkdir git cmake
-cd git
-
-git clone --depth 1 https://github.com/ROCm-Developer-Tools/HIP.git
-git clone --depth 1 https://github.com/ROCm-Developer-Tools/llvm.git
-git clone --depth 1 https://github.com/ROCm-Developer-Tools/clang.git
-
-cd ../cmake
-
+cd cmake
 mkdir build dist
-mkdir build/llvm build/clang build/hipify
-mkdir dist/llvm dist/clang dist/hipify
-
 cd build
+
 export MAKEFLAGS="-j$(nproc)"
 
-cd llvm
-cmake -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/llvm -DCMAKE_BUILD_TYPE=Release $HIP_R/git/llvm
-cmake --build . --target install
-cd ..
+function make_install {
+    git clone --depth 1 https://github.com/$2/$1.git $HIP_R/git/$1 --recursive
+    mkdir $1
+    cd $1
+    cmake -DCMAKE_PREFIX_PATH=$HIP_R/cmake/dist -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist -DCMAKE_BUILD_TYPE=Release $HIP_R/git/$1
+    cmake --build . --target install
+    cd ..
+}
 
-cd clang
-cmake -DCMAKE_PREFIX_PATH=$HIP_R/cmake/dist/llvm -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/llvm -DCMAKE_BUILD_TYPE=Release $HIP_R/git/clang
-cmake --build . --target install
-cd ..
+make_install llvm ROCm-Developer-Tools
+make_install clang ROCm-Developer-Tools
+make_install HIP ROCm-Developer-Tools
 
+mkdir hipify
 cd hipify
-cmake -DCMAKE_PREFIX_PATH="$HIP_R/cmake/dist/llvm;$HIP_R/cmake/dist/clang;$HIP_R/cmake/dist/hip" -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist/hipify -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
+cmake -DCMAKE_PREFIX_PATH=$HIP_R/cmake/dist -DCMAKE_INSTALL_PREFIX=$HIP_R/cmake/dist -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
 cmake --build . --target install
-cd ..
+
