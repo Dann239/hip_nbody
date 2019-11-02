@@ -18,32 +18,35 @@ using namespace std;
 
 #define d3_0 double3({0.,0.,0.})
 
-struct vec {
-	double* v_gpu[3];
+class vec {
+private:
+	double* v_gpu_old[3];
+	double* v_gpu_new[3];
 	double* v_cpu[3];
 	long long validity;
-
+public:
 	__device__ double3 get(int i) const {
 		return double3({
-			v_gpu[X][i],
-			v_gpu[Y][i],
-			v_gpu[Z][i] });
+			v_gpu_old[X][i],
+			v_gpu_old[Y][i],
+			v_gpu_old[Z][i] });
 	}
 	__device__ void set(int i, double3 p) {
-		v_gpu[X][i] = p.x;
-		v_gpu[Y][i] = p.y;
-		v_gpu[Z][i] = p.z;
+		v_gpu_new[X][i] = p.x;
+		v_gpu_new[Y][i] = p.y;
+		v_gpu_new[Z][i] = p.z;
 	}
 
 	void invalidate() {
 		for (int i = 0; i < 3; i++) {
-			cudaMemcpyAsync(v_cpu[i], v_gpu[i], MEM_LEN, cudaMemcpyDeviceToHost);
+			cudaMemcpyAsync(v_cpu[i], v_gpu_new[i], MEM_LEN, cudaMemcpyDeviceToHost);
 		}
 		validity = false;
 	}
 	void init() {
 		for (int i = 0; i < 3; i++) {
-			cudaMalloc(&v_gpu[i], MEM_LEN);
+			cudaMalloc(&v_gpu_old[i], MEM_LEN);
+			cudaMalloc(&v_gpu_new[i], MEM_LEN);
 			cudaHostAlloc(&v_cpu[i], MEM_LEN, cudaHostAllocMapped);
 		}
 		validity = true;
@@ -53,19 +56,21 @@ struct vec {
 			cudaDeviceSynchronize();
 			for (int i = 0; i < 3; i++) {
 				swap(v[i], v_cpu[i]);
+				swap(v_gpu_new[i], v_gpu_old[i]);
 			}
 		}
 		validity = true;
 	}
 	void set(double** v) {
 		for (int i = 0; i < 3; i++)
-			cudaMemcpyAsync(v_gpu[i], v[i], MEM_LEN, cudaMemcpyHostToDevice);
+			cudaMemcpyAsync(v_gpu_old[i], v[i], MEM_LEN, cudaMemcpyHostToDevice);
 		validity = true;
 	}
 	void destroy() {
 		for (int i = 0; i < 3; i++) {
 			cudaFreeHost(v_cpu[i]);
-			cudaFree(v_gpu[i]);
+			cudaFree(v_gpu_old[i]);
+			cudaFree(v_gpu_new[i]);
 		}
 	}
 };
