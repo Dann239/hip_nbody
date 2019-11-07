@@ -23,6 +23,5 @@ make_install HIP ROCm-Developer-Tools
 
 mkdir hipify
 cd hipify
-cmake -DCMAKE_PREFIX_PATH=~/.local -DCMAKE_INSTALL_PREFIX=~/.local -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
+cmake -DCMAKE_PREFIX_PATH=~/.local -DCMAKE_INSTALL_PREFIX=~/.local/bin -DCMAKE_BUILD_TYPE=Release $HIP_R/git/HIP/hipify-clang
 cmake --build . --target install
-
