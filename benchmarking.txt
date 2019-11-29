@@ -1,0 +1,6 @@
+GPU		| Peak Performance	| Theoretical maximum	| Ratio
+----------------+-----------------------+-----------------------+---------------
+gtx1060		| 44 GFlops		| 136 GFlops		| 32%
+gtx1080		| 108 GFlops		| 277 GFlops		| 39%
+radeonVII	| 660 GFlops		| 3360 GFlops		| 20%
+titanV		| 2233 GFlops		| 7450 GFlops		| 30%
