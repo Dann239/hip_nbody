@@ -44,13 +44,13 @@ bool window_is_open() {
 void window_delete() {
 	delete window;
 }
-void window_draw_point(double x, double y, int colour) {
+void window_draw_point(double x, double y, unsigned int colour) {
 
 	const float r = SCREEN_SIZE * 4e-3f;
 	static CircleShape point;
 	point.setRadius(r);
 	point.setPointCount(6);
-	point.setFillColor(Color(Uint32(colour)));
+	point.setFillColor(Color(colour));
 	point.setPosition(Vector2f((float)x - r, (float)y - r));
 	window->draw(point);
 }

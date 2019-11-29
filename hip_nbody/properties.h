@@ -36,8 +36,8 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int BLOCK_SIZE = 256; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
-constexpr int GRID_SIZE = 80; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
+constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
+constexpr int GRID_SIZE = 10; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -48,17 +48,15 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 300;
-constexpr double P = 1e6;
+constexpr double T = 500;
+constexpr double P = 2;
 constexpr double N = P / (K * T);
-
-constexpr double V = 0;// _sqrt(3 * K * T / M);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
-constexpr double TIME_STEP = 3e-15;
+constexpr double TIME_STEP = 1e-13;
 constexpr int SKIPS = 10;
-constexpr int NSTEPS = 10;
+constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -71,7 +69,7 @@ constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM, ASTATINE};
 
 struct properties {
 	double SIGMA, EPSILON, M, Q;
-	unsigned long long COLOUR;
+	unsigned int COLOUR;
 	double divisions[ELEMS_NUM + 1];
 	void set_properties(ELEMS type) {
 		switch (type)
@@ -115,3 +113,5 @@ struct properties {
 		set_properties(e);
 	}
 };
+
+properties get_properties(int num);

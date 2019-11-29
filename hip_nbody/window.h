@@ -6,4 +6,4 @@ void window_init();
 void window_show();
 bool window_is_open();
 void window_delete();
-void window_draw_point(double x, double y, int colour = 0);
+void window_draw_point(double x, double y, unsigned int colour = 0);

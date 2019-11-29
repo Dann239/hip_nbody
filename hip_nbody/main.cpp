@@ -40,7 +40,7 @@ void randomize() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * V;
+			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * _sqrt(3 * K * T / get_properties(i).M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -72,6 +72,7 @@ void load() {
 		}
 		push_values();
 	}
+	in.close();
 }
 
 double deflect(double& p) {
@@ -98,20 +99,26 @@ int main() {
 
 	signal(SIGINT, interrupter);
 
-	for(int i = 0; i < NSTEPS && window_is_open() && !interrupt; i++) {
+	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
 		long long t0 = mtime();
 		euler_steps(SKIPS);
 
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 		for (int i = 0; i < AMOUNT; i++)
-			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, (int)get_colour(i / BLOCK_SIZE));
+			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, get_properties(i).COLOUR);
 		window_show();
 	#endif
 
 		pull_values();
 		print_err(false);
-		cout << "mspf: " << (long long)mtime() - t0 << "; e = " << total_energy << "; " << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops" << endl;
+
+		cout.precision(3);
+		cout << fixed << "E = " << (total_energy / E * 1e3) << " meV; ";
+		cout << fixed << "Ep = " << (potential_energy / E * 1e3) << " meV; ";
+		cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
+		cout << fixed << "T = " << (2. / 3. * kinetic_energy / K) << " K; ";
+		cout << "dt = " << (long long)mtime() - t0 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops)" << endl;
 	}
 	window_delete();
 

@@ -19,6 +19,10 @@ using namespace std;
 #define d3_0 double3({0.,0.,0.})
 cudaStream_t stream = cudaStreamDefault;
 
+__host__ __device__ double3 extract(const double* const v[3], int i) {
+	return double3({ v[X][i], v[Y][i], v[Z][i] });
+}
+
 class vec {
 private:
 	double* v_gpu_old[3];
@@ -27,10 +31,7 @@ private:
 	long long validity;
 public:
 	__device__ double3 get(int i) const {
-		return double3({
-			v_gpu_old[X][i],
-			v_gpu_old[Y][i],
-			v_gpu_old[Z][i] });
+		return extract(v_gpu_old, i);
 	}
 	__device__ void set(int i, double3 p) const {
 		v_gpu_new[X][i] = p.x;
@@ -54,7 +55,7 @@ public:
 		}
 		validity = true;
 	}
-	void get(double** v) {
+	void get_all(double** v) {
 		if (!validity) {
 			cudaStreamSynchronize(stream);
 			for (int i = 0; i < 3; i++)
@@ -62,7 +63,7 @@ public:
 		}
 		validity = true;
 	}
-	void set(double** v) {
+	void set_all(double** v) {
 		for (int i = 0; i < 3; i++)
 			cudaMemcpyAsync(v_gpu_old[i], v[i], MEM_LEN, cudaMemcpyHostToDevice, stream);
 		validity = true;
@@ -84,6 +85,9 @@ static double* energy;
 static double* _energy;
 static properties* props;
 
+double potential_energy = 0;
+double kinetic_energy = 0;
+double temperature = 0;
 double total_energy = 0;
 
 void alloc() {
@@ -120,12 +124,12 @@ void dealloc() {
 }
 
 void pull_values() {
-	vec_pos.get(pos);
-	vec_vel.get(vel);
+	vec_pos.get_all(pos);
+	vec_vel.get_all(vel);
 }
 void push_values() {
-	vec_pos.set(pos);
-	vec_vel.set(vel);
+	vec_pos.set_all(pos);
+	vec_vel.set_all(vel);
 }
 
 void print_err(bool force) {
@@ -146,11 +150,12 @@ __host__ __device__ int get_elem(int block, properties p) {
 			return i - 1;
 	return ERROR;
 }
-long long get_colour(int block) {
-	return properties(ELEMS_TYPES[get_elem(block, properties(ERROR))]).COLOUR;
+
+properties get_properties(int num) {
+	return properties(ELEMS_TYPES[get_elem(num / BLOCK_SIZE, properties(ERROR))]);
 }
 
-__device__ double hypot2(double3 p) {
+__host__ __device__ double hypot2(double3 p) {
 	return p.x * p.x + p.y * p.y + p.z * p.z;
 }
 __device__ double3 round(double3 a) {
@@ -261,10 +266,10 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	__shared__ double _posy[BLOCK_SIZE];										\
 	__shared__ double _posz[BLOCK_SIZE];										\
 	int props_ind = 0;															\
-	for (int i = 0; i < gridDim.x; i++) {										\
+	for (int i = 0; i < GRID_SIZE; i++) {										\
 																				\
 		__syncthreads();														\
-		double3 _pos = 1. / SIZE * vec_pos.get(i * blockDim.x + tid);			\
+		double3 _pos = 1. / SIZE * vec_pos.get(i * BLOCK_SIZE + tid);			\
 		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
 																				\
 		if ( invalid_elem(i, __P, props_ind ))									\
@@ -274,7 +279,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		__INIT__																\
 																				\
 		__syncthreads();														\
-		for (int j = 0; j < blockDim.x; j++) {									\
+		for (int j = 0; j < BLOCK_SIZE; j++) {									\
 			double3 _p = double3({_posx[j],_posy[j],_posz[j]});					\
 			if (i != bid || j != tid) {											\
 				__BODY__														\
@@ -287,7 +292,6 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 
 
 __global__
-//__launch_bounds__(BLOCK_SIZE, 1024 / BLOCK_SIZE)
 void euler_gpu(const vec vec_pos, const vec vec_vel, properties* props) {
 	double3 a_lj = d3_0;
 	double3 a_em = d3_0;
@@ -315,7 +319,6 @@ void euler_gpu(const vec vec_pos, const vec vec_vel, properties* props) {
 
 }
 __global__
-//__launch_bounds__(BLOCK_SIZE, 1024 / BLOCK_SIZE)
 void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
@@ -335,7 +338,17 @@ void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, propertie
 
 	double e_k = __P.M * hypot2(v) / 2.;
 
-	energy[ind] = e_k + e_em + e_lj;
+	energy[ind] = e_em + e_lj;
+}
+
+void energy_calc() {
+	potential_energy = 0;
+	kinetic_energy = 0;
+	for (int i = 0; i < AMOUNT; i++) {
+		potential_energy += _energy[i] / AMOUNT;
+		kinetic_energy += get_properties(i).M * hypot2(extract(vel, i)) / 2. / AMOUNT;
+	}
+	total_energy = potential_energy + kinetic_energy;
 }
 
 void euler_steps(int steps) {
@@ -349,10 +362,7 @@ void euler_steps(int steps) {
 	vec_pos.invalidate();
 	vec_vel.invalidate();
 
-	total_energy = 0;
-	for (int i = 0; i < AMOUNT; i++) {
-		total_energy += _energy[i];
-	}
+	energy_calc();
 
 #ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, 0, stream >>> (vec_pos, vec_vel, energy, props);
@@ -365,10 +375,7 @@ void force_energy_calc() {
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, 0 >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpy(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
-	total_energy = 0;
-	for (int i = 0; i < AMOUNT; i++) {
-		total_energy += _energy[i];
-	}
+	energy_calc();
 }
 
 void print_chars() {

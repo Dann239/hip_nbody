@@ -2,7 +2,7 @@
 
 extern double* pos[3];
 extern double* vel[3];
-extern double total_energy;
+extern double total_energy, potential_energy, kinetic_energy;
 
 void alloc();
 void dealloc();
@@ -15,5 +15,3 @@ void force_energy_calc();
 
 void print_err(bool force = true);
 void print_chars();
-
-long long get_colour(int block);
