@@ -388,7 +388,7 @@ void print_chars() {
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
 	printf("warpSize: %d\n", chars.warpSize);
-
+#endif
 	cudaFuncAttributes attr;
 	cudaFuncGetAttributes(&attr, euler_gpu);
 	printf("\neuler_gpu:\n");
@@ -398,7 +398,6 @@ void print_chars() {
 	printf("numRegs: %d\n", attr.numRegs);
 	printf("localSizeBytes: %zu\n", attr.localSizeBytes);
 	printf("sharedSizeBytes: %zu\n", attr.sharedSizeBytes);
-#endif
 
 #ifndef __HCC__
 	int numBlocks;
