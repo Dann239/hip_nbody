@@ -36,7 +36,7 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int BLOCK_SIZE = 512; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
+constexpr int BLOCK_SIZE = 256; //must be 32 * N, 512 is optimal generally, 256 is better for gridSize = 3 * N * MPCount
 constexpr int GRID_SIZE = 10; //optimal is MPCount * BlocksPerMP * N, MPCount=10 for 1060, MPCount=60 for VEGA, MPCount=80 for TITAN
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
@@ -48,14 +48,14 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 500;
-constexpr double P = 2;
+constexpr double T = 1000;
+constexpr double P = 1;
 constexpr double N = P / (K * T);
 
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
-constexpr double TIME_STEP = 1e-13;
-constexpr int SKIPS = 10;
+constexpr double TIME_STEP = 2e-15;
+constexpr int SKIPS = 50;
 constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
@@ -64,7 +64,7 @@ enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON, ERROR};
 
 constexpr int ELEMS_NUM = 2;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49, 1 };
+constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49999, 1 };
 constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM, ASTATINE};
 
 struct properties {
@@ -85,7 +85,7 @@ struct properties {
 			SIGMA = 0.263e-9;
 			M = 0.004 / NA;
 			EPSILON = 6.03 * K;
-			Q = E;
+			Q = -E;
 			COLOUR = 0xFF0000FF;
 			break;
 		case PROTON:
