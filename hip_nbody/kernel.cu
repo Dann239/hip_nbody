@@ -37,11 +37,13 @@ public:
 		v_gpu_new[Y][i] = p.y;
 		v_gpu_new[Z][i] = p.z;
 	}
-
+	void gpu_copy() {
+		for(int i = 0; i < 3; i++)
+			cudaMemcpyAsync(v_gpu_old[i], v_gpu_new[i], MEM_LEN, cudaMemcpyDeviceToDevice, stream);
+	}
 	void invalidate() {
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 3; i++)
 			cudaMemcpyAsync(v_cpu[i], v_gpu_new[i], MEM_LEN, cudaMemcpyDeviceToHost, stream);
-		}
 		validity = false;
 	}
 	void init() {
@@ -55,10 +57,8 @@ public:
 	void get(double** v) {
 		if (!validity) {
 			cudaStreamSynchronize(stream);
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < 3; i++)
 				swap(v[i], v_cpu[i]);
-				swap(v_gpu_new[i], v_gpu_old[i]);
-			}
 		}
 		validity = true;
 	}
@@ -339,10 +339,13 @@ void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, propertie
 }
 
 void euler_steps(int steps) {
-#ifndef __INTELLISENSE__
-	for(int i = 0; i < steps; i++)
+	for(int i = 0; i < steps; i++) {
+	#ifndef __INTELLISENSE__
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, 0, stream >>> (vec_pos, vec_vel, props);
-#endif
+	#endif
+		vec_pos.gpu_copy();
+		vec_vel.gpu_copy();
+	}
 	vec_pos.invalidate();
 	vec_vel.invalidate();
 
@@ -380,18 +383,18 @@ void print_chars() {
 	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
 	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
-
-	printf("regsPerBlock: %d\n", chars.regsPerBlock);
-
+	printf("regsPerBlock: %d\n\n", chars.regsPerBlock);
+	
 #ifndef __HIPCC__
+	printf("singleToDoublePrecisionPerfRatio: %d\n", chars.singleToDoublePrecisionPerfRatio);
 	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
-	printf("warpSize: %d\n", chars.warpSize);
+	printf("warpSize: %d\n\n", chars.warpSize);
 #endif
 	cudaFuncAttributes attr;
 	cudaFuncGetAttributes(&attr, euler_gpu);
-	printf("\neuler_gpu:\n");
+	printf("euler_gpu:\n");
 	printf("binaryVersion: %d\n", attr.binaryVersion);
 	printf("ptxVersion: %d\n", attr.ptxVersion);
 	printf("maxThreadsPerBlock: %d\n", attr.maxThreadsPerBlock);
@@ -403,14 +406,14 @@ void print_chars() {
 	int numBlocks;
 	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, BLOCK_SIZE, 0);
 	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double) (numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
-
-
-	printf("\nBest BlockSize options:\n");
+/*	printf("\nBest BlockSize options:\n");
 	for (int i = 128; i <= 1024 ; i *= 2) {
 		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, i, 0);
 		double occ = (double)(numBlocks * i) / (chars.maxThreadsPerMultiProcessor);
 
 		printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", i, numBlocks, occ);
 	}
+*/
+	printf("\n");
 #endif
 }

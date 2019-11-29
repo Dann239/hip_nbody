@@ -8,7 +8,24 @@
 #include <time.h>
 #include <math.h>
 #include <chrono>
+#include <csignal>
 using namespace std;
+
+bool interrupt = false;
+void interrupter(int n) {
+	interrupt = true;
+}
+
+constexpr long long flop() {
+	int res = 14;
+	#ifdef ENABLE_LJ
+		res += 13;
+	#endif
+	#ifdef ENABLE_EM
+		res += 9;
+	#endif
+	return res;
+}
 
 void randomize() {
 	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
@@ -79,7 +96,9 @@ int main() {
 	window_init();
 	force_energy_calc();
 
-	for(int i = 0; i < NSTEPS && window_is_open(); i++) {
+	signal(SIGINT, interrupter);
+
+	for(int i = 0; i < NSTEPS && window_is_open() && !interrupt; i++) {
 		long long t0 = mtime();
 		euler_steps(SKIPS);
 
@@ -92,7 +111,7 @@ int main() {
 
 		pull_values();
 		print_err(false);
-		cout << "mspf: " << (long long)mtime() - t0 << "; e = " << total_energy << endl;
+		cout << "mspf: " << (long long)mtime() - t0 << "; e = " << total_energy << "; " << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops" << endl;
 	}
 	window_delete();
 
