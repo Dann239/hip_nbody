@@ -15,7 +15,7 @@ void window_init() {
 	window = new RenderWindow;
 	settings.antialiasingLevel = 8;
 	window->create(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "Runge CUDA", sf::Style::Default, settings);
-	window->setFramerateLimit(120);
+	//window->setFramerateLimit(120);
 }
 void window_show() {
 	window->display();

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <time.h>
 #include <math.h>
+#include <chrono>
 using namespace std;
 
 void randomize() {
@@ -43,6 +44,7 @@ void dump() {
 		out.write((char*)pos[i], AMOUNT * sizeof(double));
 		out.write((char*)vel[i], AMOUNT * sizeof(double));
 	}
+	out.close();
 }
 void load() {
 	ifstream in("data/dump.dat", ios::binary);
@@ -63,9 +65,12 @@ double deflect(double& p) {
 	return p;
 }
 
+long long mtime() {
+	return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+}
+
 int main() {
 	print_chars();
-	//return 0;
 
 	alloc();
 	randomize();
@@ -75,7 +80,7 @@ int main() {
 	force_energy_calc();
 
 	for(int i = 0; i < NSTEPS && window_is_open(); i++) {
-		long long t0 = clock();
+		long long t0 = mtime();
 		euler_steps(SKIPS);
 
 	#ifdef SFML_STATIC
@@ -87,7 +92,7 @@ int main() {
 
 		pull_values();
 		print_err(false);
-		cout << "mspf: " << ((long long)clock() - t0) * 1000 / CLOCKS_PER_SEC << "; e = " << total_energy << endl;
+		cout << "mspf: " << ((long long)mtime() - t0) * 1000 / CLOCKS_PER_SEC << "; e = " << total_energy << endl;
 	}
 	window_delete();
 

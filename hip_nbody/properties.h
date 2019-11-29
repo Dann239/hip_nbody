@@ -58,7 +58,7 @@ constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 3e-15;
 constexpr int SKIPS = 5;
-constexpr int NSTEPS = 1000;
+constexpr int NSTEPS = 50;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
