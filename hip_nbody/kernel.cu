@@ -241,91 +241,70 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	e_em += d_1;
 #endif
 }
+#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
+	int tid = threadIdx.x,														\
+	bid = blockIdx.x,															\
+	ind = bid * blockDim.x + tid;												\
+																				\
+	double3 p = 1. / SIZE * vec_pos.get(ind),									\
+	v = vec_vel.get(ind);														\
+																				\
+	properties __P = props[get_elem(bid, props[0])];							\
+																				\
+	double lj_coeff[ELEMS_NUM];													\
+	double em_coeff[ELEMS_NUM];													\
+	double ss_ss[ELEMS_NUM];													\
+	for(int i = 0; i < ELEMS_NUM; i++) {										\
+		properties _P = props[i];												\
+		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);						\
+		double sigma = (_P.SIGMA + __P.SIGMA) / 2;								\
+		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
+		__COEFFS__																\
+	}																			\
+	extern __shared__ double _posx[], _posy[], _posz[];								\
+	int props_ind = 0;															\
+	for (int i = 0; i < GRID_SIZE; i++) {										\
+																				\
+		__syncthreads();														\
+		double3 _pos = 1. / SIZE * vec_pos.get(i * BLOCK_SIZE + tid);			\
+		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
+																				\
+		if ( invalid_elem(i, __P, props_ind ))									\
+			props_ind++;														\
+																				\
+																				\
+		__INIT__																\
+																				\
+		__syncthreads();														\
+		for (int j = 0; j < BLOCK_SIZE; j++) {									\
+			double3 _p = double3({_posx[j],_posy[j],_posz[j]});					\
+			if (i != bid || j != tid) {											\
+				__BODY__														\
+			}																	\
+		}																		\
+		__POST__																\
+	}																			\
+																				\
+	p *= SIZE;
 
-struct interaction_wrapper {
-	properties _P0, _P;
-	double epsilon, sigma;
-	double lj_coeff[ELEMS_NUM];
-	double em_coeff[ELEMS_NUM];
-	double ss_ss[ELEMS_NUM];
-	double3 p, _p;
-	double3 v;
-	int props_ind;
-	double *_posx, *_posy, *_posz;
-
-	template<typename T,typename T_, typename T__>
-	__device__ interaction_wrapper(double3& p_, double3& v_, const vec vec_pos, const vec vec_vel, double _posx[], double _posy[], double _posz[], const properties* props, T coeffs, T_ body, T__ post) : _P0(props[0]), _P(props[0]) {
-
-		int tid = threadIdx.x,
-		bid = blockIdx.x,
-		ind = bid * blockDim.x + tid;
-
-		p = 1. / SIZE * vec_pos.get(ind);
-		v = vec_vel.get(ind);
-
-		_P0 = props[get_elem(bid, props[0])];
-
-		for(props_ind = 0; props_ind < ELEMS_NUM; props_ind++) {
-			_P = props[props_ind];
-			epsilon = sqrt(_P.EPSILON * _P0.EPSILON);
-			sigma = (_P.SIGMA + _P0.SIGMA) / 2;
-			ss_ss[props_ind] = (SIZE * SIZE) / (sigma * sigma);
-			coeffs(*this);
-		}
-		props_ind = 0;
-		for (int i = 0; i < GRID_SIZE; i++) {
-
-			__syncthreads();
-			double3 _pos = 1. / SIZE * vec_pos.get(i * BLOCK_SIZE + tid);
-			_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;
-
-			if ( invalid_elem(i, _P0, props_ind ))
-				props_ind++;
-
-			__syncthreads();
-			for (int j = 0; j < BLOCK_SIZE; j++) {
-				_p = double3({_posx[j],_posy[j],_posz[j]});
-				if (i != bid || j != tid)
-					body(*this);
-
-			}
-			post(*this);
-		}
-
-		p *= SIZE;
-
-		p_ = p;
-		v_ = v;
-	}
-};
 
 __global__
-void euler_gpu(const vec vec_pos, const vec vec_vel, const properties* props) {
-	extern __shared__ double _posx[];
-	extern __shared__ double _posy[];
-	extern __shared__ double _posz[];
-	
-	int tid = threadIdx.x,
-		bid = blockIdx.x,
-		ind = bid * blockDim.x + tid;
+void euler_gpu(const vec vec_pos, const vec vec_vel, properties* props) {
+	double3 a_lj = d3_0;
+	double3 a_em = d3_0;
 
-	double3 a_lj = d3_0, a_em = d3_0, da_lj = d3_0, da_em = d3_0;
-	double3 p, v;
-
-	interaction_wrapper(p, v, vec_pos, vec_vel, _posx, _posy, _posz, props,
-		[&](interaction_wrapper& w) {
-			w.lj_coeff[w.props_ind] = 48. * w.epsilon * SIZE / w.sigma / w.sigma / w._P0.M;
-			w.em_coeff[w.props_ind] = 1. / (4. * PI * EPSILON0) * w._P0.Q * w._P.Q / SIZE / SIZE / w._P0.M;
-		},
-		[&](interaction_wrapper& w) {
-			get_a(da_lj, da_em, w.p, w._p, w.ss_ss[w.props_ind]);
-		},
-		[&](interaction_wrapper& w) {
-			a_lj += w.lj_coeff[w.props_ind] * da_lj;
-			a_em += w.em_coeff[w.props_ind] * da_em;
-			da_lj = da_em = d3_0;
-		}
-	);
+	GPU_PAIR_INTERACTION_WRAPPER(
+		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / __P.M;
+		em_coeff[i] = 1. / (4. * PI * EPSILON0) * __P.Q * _P.Q / SIZE / SIZE / __P.M;
+	,
+		double3 da_lj = d3_0;
+		double3 da_em = d3_0;
+	,
+		get_a(da_lj, da_em, p, _p, ss_ss[props_ind]);
+	,
+		a_lj += lj_coeff[props_ind] * da_lj;
+		a_em += em_coeff[props_ind] * da_em;
+	)
 
 	double3 a = a_lj + a_em;
 
@@ -336,34 +315,25 @@ void euler_gpu(const vec vec_pos, const vec vec_vel, const properties* props) {
 	vec_vel.set(ind, v);
 
 }
-
 __global__
-void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, const properties* props) {
-	extern __shared__ double _posx[];
-	extern __shared__ double _posy[];
-	extern __shared__ double _posz[];
+void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, properties* props) {
+	double e_lj = 0;
+	double e_em = 0;
 
-	int tid = threadIdx.x,
-		bid = blockIdx.x,
-		ind = bid * blockDim.x + tid;
-
-	double e_lj = 0, e_em = 0, de_lj = 0, de_em = 0;
-	double3 p, v;
-
-	interaction_wrapper(p, v, vec_pos, vec_vel, _posx, _posy, _posz, props,
-		[&](interaction_wrapper& w) {
-			w.lj_coeff[w.props_ind] = 2. * w.epsilon;
-			w.em_coeff[w.props_ind] = 1. / (8. * PI * EPSILON0) * w._P0.Q * w._P.Q / SIZE;
-		},
-		[&](interaction_wrapper& w) {
-			get_e(de_lj, de_em, w.p, w._p, w.ss_ss[w.props_ind]);
-		},
-		[&](interaction_wrapper& w) {
-			e_lj += w.lj_coeff[w.props_ind] * de_lj;
-			e_em += w.em_coeff[w.props_ind] * de_em;
-			de_lj = de_em = 0;
-		}
+	GPU_PAIR_INTERACTION_WRAPPER(
+		lj_coeff[i] = 2. * epsilon;
+		em_coeff[i] = 1. / (8. * PI * EPSILON0) * __P.Q * _P.Q / SIZE;
+	,
+		double de_lj = 0;
+		double de_em = 0;
+	,
+		get_e(de_lj, de_em, p, _p, ss_ss[props_ind]);
+	,
+		e_lj += lj_coeff[props_ind] * de_lj;
+		e_em += em_coeff[props_ind] * de_em;
 	);
+
+	double e_k = __P.M * hypot2(v) / 2.;
 
 	energy[ind] = e_em + e_lj;
 }
@@ -438,9 +408,16 @@ void print_chars() {
 
 #ifndef __HCC__
 	int numBlocks;
-	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, BLOCK_SIZE, sizeof(double) * BLOCK_SIZE * 3);
+	cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, BLOCK_SIZE, 0);
 	printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", BLOCK_SIZE, numBlocks, (double) (numBlocks * BLOCK_SIZE) / (chars.maxThreadsPerMultiProcessor));
+/*	printf("\nBest BlockSize options:\n");
+	for (int i = 128; i <= 1024 ; i *= 2) {
+		cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocks, (const void*)euler_gpu, i, 0);
+		double occ = (double)(numBlocks * i) / (chars.maxThreadsPerMultiProcessor);
 
+		printf("BlockSize = %d; BlocksPerMP = %d; Occupancy = %f\n", i, numBlocks, occ);
+	}
+*/
 	printf("\n");
 #endif
 }
