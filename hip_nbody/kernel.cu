@@ -245,7 +245,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 #endif
 }
 
-#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, _P0OST__)	\
+#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
 	int tid = threadIdx.x,														\
 	bid = blockIdx.x,															\
 	ind = bid * blockDim.x + tid;												\
@@ -283,13 +283,14 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		__INIT__																\
 																				\
 		__syncthreads();														\
-		for (int j = 0; j < BLOCK_SIZE; j++) {									\
+		for (int j_ = 0; j_ < BLOCK_SIZE; j_++) {								\
+			int j = (j_ + i) % BLOCK_SIZE;										\
 			double3 _p = double3({_posx[j],_posy[j],_posz[j]});					\
 			if (i != bid || j != tid) {											\
 				__BODY__														\
 			}																	\
 		}																		\
-		_P0OST__																\
+		__POST__																\
 	}																			\
 																				\
 	p *= SIZE;
