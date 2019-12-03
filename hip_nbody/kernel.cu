@@ -222,6 +222,7 @@ __device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, doubl
 	a_em += d_2 * d_1 * d;
 #endif
 }
+
 __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double ss_ss) {
 	double3 d = p - _p;
 	d -= round(d);
@@ -241,7 +242,8 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	e_em += d_1;
 #endif
 }
-#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
+
+#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, _P0OST__)	\
 	int tid = threadIdx.x,														\
 	bid = blockIdx.x,															\
 	ind = bid * blockDim.x + tid;												\
@@ -249,19 +251,22 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	double3 p = 1. / SIZE * vec_pos.get(ind),									\
 	v = vec_vel.get(ind);														\
 																				\
-	properties __P = props[get_elem(bid, props[0])];							\
+	properties _P0 = props[get_elem(bid, props[0])];							\
 																				\
 	double lj_coeff[ELEMS_NUM];													\
 	double em_coeff[ELEMS_NUM];													\
 	double ss_ss[ELEMS_NUM];													\
 	for(int i = 0; i < ELEMS_NUM; i++) {										\
 		properties _P = props[i];												\
-		double epsilon = sqrt(_P.EPSILON * __P.EPSILON);						\
-		double sigma = (_P.SIGMA + __P.SIGMA) / 2;								\
+		double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);						\
+		double sigma = (_P.SIGMA + _P0.SIGMA) / 2;								\
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
 		__COEFFS__																\
 	}																			\
-	extern __shared__ double _posx[], _posy[], _posz[];								\
+	extern __shared__ double shm[];												\
+	double* _posx = shm;														\
+	double* _posy = &shm[BLOCK_SIZE];											\
+	double* _posz = &shm[BLOCK_SIZE * 2];										\
 	int props_ind = 0;															\
 	for (int i = 0; i < GRID_SIZE; i++) {										\
 																				\
@@ -269,7 +274,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		double3 _pos = 1. / SIZE * vec_pos.get(i * BLOCK_SIZE + tid);			\
 		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
 																				\
-		if ( invalid_elem(i, __P, props_ind ))									\
+		if ( invalid_elem(i, _P0, props_ind ))									\
 			props_ind++;														\
 																				\
 																				\
@@ -282,7 +287,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 				__BODY__														\
 			}																	\
 		}																		\
-		__POST__																\
+		_P0OST__																\
 	}																			\
 																				\
 	p *= SIZE;
@@ -294,8 +299,8 @@ void euler_gpu(const vec vec_pos, const vec vec_vel, properties* props) {
 	double3 a_em = d3_0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / __P.M;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) * __P.Q * _P.Q / SIZE / SIZE / __P.M;
+		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / _P0.M;
+		em_coeff[i] = 1. / (4. * PI * EPSILON0) * _P0.Q * _P.Q / SIZE / SIZE / _P0.M;
 	,
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
@@ -322,7 +327,7 @@ void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, propertie
 
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 2. * epsilon;
-		em_coeff[i] = 1. / (8. * PI * EPSILON0) * __P.Q * _P.Q / SIZE;
+		em_coeff[i] = 1. / (8. * PI * EPSILON0) * _P0.Q * _P.Q / SIZE;
 	,
 		double de_lj = 0;
 		double de_em = 0;
@@ -333,7 +338,7 @@ void energy_gpu (const vec vec_pos, const vec vec_vel, double* energy, propertie
 		e_em += em_coeff[props_ind] * de_em;
 	);
 
-	double e_k = __P.M * hypot2(v) / 2.;
+	double e_k = _P0.M * hypot2(v) / 2.;
 
 	energy[ind] = e_em + e_lj;
 }
