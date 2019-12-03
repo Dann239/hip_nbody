@@ -241,7 +241,6 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	e_em += d_1;
 #endif
 }
-
 #define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
 	int tid = threadIdx.x,														\
 	bid = blockIdx.x,															\
@@ -262,9 +261,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
 		__COEFFS__																\
 	}																			\
-	__shared__ double _posx[BLOCK_SIZE];										\
-	__shared__ double _posy[BLOCK_SIZE];										\
-	__shared__ double _posz[BLOCK_SIZE];										\
+	extern __shared__ double _posx[], _posy[], _posz[];								\
 	int props_ind = 0;															\
 	for (int i = 0; i < GRID_SIZE; i++) {										\
 																				\
@@ -354,7 +351,7 @@ void energy_calc() {
 void euler_steps(int steps) {
 	for(int i = 0; i < steps; i++) {
 	#ifndef __INTELLISENSE__
-		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, 0, stream >>> (vec_pos, vec_vel, props);
+		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(double) * BLOCK_SIZE * 3, stream >>> (vec_pos, vec_vel, props);
 	#endif
 		vec_pos.gpu_copy();
 		vec_vel.gpu_copy();
@@ -365,14 +362,14 @@ void euler_steps(int steps) {
 	energy_calc();
 
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, 0, stream >>> (vec_pos, vec_vel, energy, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(double) * BLOCK_SIZE * 3, stream >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpyAsync(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost, stream);
 
 }
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, 0 >>> (vec_pos, vec_vel, energy, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(double) * BLOCK_SIZE * 3 >>> (vec_pos, vec_vel, energy, props);
 #endif
 	cudaMemcpy(_energy, energy, MEM_LEN, cudaMemcpyDeviceToHost);
 	energy_calc();
@@ -391,7 +388,7 @@ void print_chars() {
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
 	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
 	printf("regsPerBlock: %d\n\n", chars.regsPerBlock);
-	
+
 #ifndef __HIPCC__
 	printf("singleToDoublePrecisionPerfRatio: %d\n", chars.singleToDoublePrecisionPerfRatio);
 	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
