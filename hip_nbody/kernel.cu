@@ -91,6 +91,8 @@ double temperature = 0;
 double total_energy = 0;
 
 void alloc() {
+	cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+	
 	cudaStreamCreate(&stream);
 
 	for (int i = 0; i < 3; i++) {
