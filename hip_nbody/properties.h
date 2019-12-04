@@ -55,8 +55,8 @@ constexpr double N = P / (K * T);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 3e-14;
-constexpr int SKIPS = 250;
-constexpr int NSTEPS = 3;
+constexpr int SKIPS = 50;
+constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -88,7 +88,7 @@ struct properties {
 			SIGMA = 0.263e-9;
 			M = 0.004 / NA;
 			EPSILON = 6.03 * K;
-			Q = -E;
+			Q = E;
 			COLOUR = 0xFF0000FF;
 			break;
 		case PROTON:

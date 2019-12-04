@@ -156,17 +156,18 @@ properties get_properties(int num) {
 __host__ __device__ double hypot2(double3 p) {
 	return p.x * p.x + p.y * p.y + p.z * p.z;
 }
+__host__ __device__ float hypotf2(float3 p) {
+	return p.x * p.x + p.y * p.y + p.z * p.z;
+}
+
 __device__ double3 round(double3 a) {
 	return { round(a.x),round(a.y),round(a.z) };
 }
+__device__ float3 roundf(float3 a) {
+	return { roundf(a.x),roundf(a.y),roundf(a.z) };
+}
 
 #ifndef __HCC__
-__device__ double3& operator-= (double3& a, double3 b) {
-	a.x -= b.x;
-	a.y -= b.y;
-	a.z -= b.z;
-	return a;
-}
 __device__ double3& operator+=(double3& a, double3 b) {
 	a.x += b.x;
 	a.y += b.y;
@@ -174,69 +175,77 @@ __device__ double3& operator+=(double3& a, double3 b) {
 	return a;
 }
 #endif
-
-__device__ double3& operator*= (double3& a, double b) {
-	a.x *= b;
-	a.y *= b;
-	a.z *= b;
-	return a;
-}
-__device__ double3 operator- (double3 a, double3 b) {
-	return { a.x - b.x, a.y - b.y, a.z - b.z };
-}
 __device__ double3 operator* (double b, double3 a) {
 	return { a.x * b, a.y * b, a.z * b };
 }
 __device__ double3 operator+ (double3 a, double3 b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
-__device__ double3 operator& (double3 a, double3 b) {
-	return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+
+#ifndef __HCC__
+__device__ float3& operator-= (float3& a, float3 b) {
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	return a;
+}
+__device__ double3& operator+=(double3& a, float3 b) {
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	return a;
+}
+#endif
+__device__ float3 operator- (float3 a, float3 b) {
+	return { a.x - b.x, a.y - b.y, a.z - b.z };
+}
+__device__ float3 operator* (float b, float3 a) {
+	return { a.x * b, a.y * b, a.z * b };
 }
 
-__device__ bool operator== (double3 a, double3 b) {
-	return a.x == b.x && a.y == b.y && a.z == b.z;
+__device__ float3 to_f3(double3 a) {
+	return {(float)a.x, (float)a.y, (float)a.z};
 }
 
-__device__ void get_a(double3& a_lj, double3& a_em, double3 p, double3 _p, double ss_ss) {
-	double3 d = p - _p;
-	d -= round(d);
+__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss) {
+	float3 d = p - _p;
+	d -= roundf(d);
 
-	double d2 = hypot2(d);
+	float d2 = hypotf2(d);
 
 #ifdef ENABLE_LJ
-	double r2 = d2 * ss_ss,
-		r_2 = 1. / r2,
+	float r2 = d2 * ss_ss,
+		r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2,
 		r_8 = r_4 * r_4,
-		_2r_14__r_8 = (r_6 - .5) * r_8;
+		_2r_14__r_8 = (r_6 - .5f) * r_8;
 	a_lj += (_2r_14__r_8 * d);
 #endif
 
 #ifdef ENABLE_EM
-	double d_2 = 1. / d2,
-		d_1 = sqrt(d_2);
-	a_em += d_2 * d_1 * d;
+	double d_2 = 1.f / d2,
+		d_1 = sqrtf(d_2);
+	a_em += (d_2 * d_1 * d);
 #endif
 }
 
-__device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double ss_ss) {
-	double3 d = p - _p;
-	d -= round(d);
+__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, double ss_ss) {
+	float3 d = p - _p;
+	d -= roundf(d);
 
-	double d2 = hypot2(d);
+	float d2 = hypotf2(d);
 
 #ifdef ENABLE_LJ
-	double r2 = d2 * ss_ss,
-		r_2 = 1. / r2,
+	float r2 = d2 * ss_ss,
+		r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
-	e_lj += (r_6 - 1.) * r_6;
+	e_lj += (r_6 - 1.f) * r_6;
 #endif
 
 #ifdef ENABLE_EM
-	double d_1 = 1. / sqrt(d2);
+	float d_1 = 1.f / sqrtf(d2);
 	e_em += d_1;
 #endif
 }
@@ -249,11 +258,12 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 	double3 p = 1. / SIZE * vec_all.get(ind, POS),								\
 	v = vec_all.get(ind, VEL);													\
 																				\
+	float3 p_f = to_f3(p);														\
 	properties _P0 = props[get_elem(bid, props[0])];							\
 																				\
 	double lj_coeff[ELEMS_NUM];													\
 	double em_coeff[ELEMS_NUM];													\
-	double ss_ss[ELEMS_NUM];													\
+	float ss_ss[ELEMS_NUM];														\
 	for(int i = 0; i < ELEMS_NUM; i++) {										\
 		properties _P = props[i];												\
 		double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);						\
@@ -261,26 +271,25 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
 		__COEFFS__																\
 	}																			\
-	extern __shared__ double shm[];												\
-	double* _posx = shm;														\
-	double* _posy = &shm[BLOCK_SIZE];											\
-	double* _posz = &shm[BLOCK_SIZE * 2];										\
+	extern __shared__ float shm[];												\
+	float* _posx = shm;															\
+	float* _posy = &shm[BLOCK_SIZE];											\
+	float* _posz = &shm[BLOCK_SIZE * 2];										\
 	int props_ind = 0;															\
 	for (int i = 0; i < GRID_SIZE; i++) {										\
 																				\
 		__syncthreads();														\
-		double3 _pos = 1. / SIZE * vec_all.get(i * BLOCK_SIZE + tid, POS);		\
+		float3 _pos = to_f3(1. / SIZE * vec_all.get(i * BLOCK_SIZE + tid, POS));\
 		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
 																				\
 		if ( invalid_elem(i, _P0, props_ind ))									\
 			props_ind++;														\
 																				\
-																				\
 		__INIT__																\
 																				\
 		__syncthreads();														\
 		for (int j = 0; j < BLOCK_SIZE; j++) {									\
-			double3 _p = double3({_posx[j],_posy[j],_posz[j]});					\
+			float3 _p = float3({_posx[j],_posy[j],_posz[j]});					\
 			if (i != bid || j != tid) {											\
 				__BODY__														\
 			}																	\
@@ -288,7 +297,7 @@ __device__ void get_e(double& e_lj, double& e_em, double3 p, double3 _p, double 
 		__POST__																\
 	}																			\
 																				\
-	p *= SIZE;
+	p = SIZE * p;
 
 
 __global__
@@ -303,7 +312,7 @@ void euler_gpu(const vec<6> vec_all, properties* props) {
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
 	,
-		get_a(da_lj, da_em, p, _p, ss_ss[props_ind]);
+		get_a(da_lj, da_em, p_f, _p, ss_ss[props_ind]);
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
 		a_em += em_coeff[props_ind] * da_em;
@@ -330,7 +339,7 @@ void energy_gpu (const vec<6> vec_all, double* energy, properties* props) {
 		double de_lj = 0;
 		double de_em = 0;
 	,
-		get_e(de_lj, de_em, p, _p, ss_ss[props_ind]);
+		get_e(de_lj, de_em, p_f, _p, ss_ss[props_ind]);
 	,
 		e_lj += lj_coeff[props_ind] * de_lj;
 		e_em += em_coeff[props_ind] * de_em;
