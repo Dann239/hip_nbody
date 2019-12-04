@@ -1,6 +1,76 @@
-GPU		| Peak Performance	| Theoretical maximum	| Ratio
+			Peak performance trials
+
+ GPU		| Peak Performance	| Theoretical maximum	| Ratio
 ----------------+-----------------------+-----------------------+---------------
-gtx1060		| 44 GFlops		| 136 GFlops		| 32%
-gtx1080		| 108 GFlops		| 277 GFlops		| 39%
-radeonVII	| 660 GFlops		| 3360 GFlops		| 20%
-titanV		| 2233 GFlops		| 7450 GFlops		| 30%
+ gtx1060	| 44 GFlops		| 136 GFlops		| 32%
+ gtx1080	| 108 GFlops		| 277 GFlops		| 39%
+ radeonVII	| 660 GFlops		| 3360 GFlops		| 20%
+ titanV		| 2233 GFlops		| 7450 GFlops		| 30%
+
+
+
+		Titan V trials
+
+ Grid size	| Warp count (x32)	| Performance
+----------------+-----------------------+-------------
+ 80		| 1			| 102 GFlops
+		| 2			| 564 GFlops
+		| 3			| 850 GFlops
+		| 4			| 1139 GFlops ?
+		| 5			| 1181 GFlops
+		| 6			| 1420 GFlops
+		| 7			| 1660 GFlops
+		| 8			| 1901 GFlops !
+		| 9			| 1654 GFlops
+		| 10			| 1836 GFlops
+		| 11			| 2021 GFlops
+		| 12			| 2205 GFlops !
+		| 13			| 1862 GFlops
+		| 14			| 2007 GFlops
+		| 15			| 2145 GFlops
+		| 16			| 2308 GFlops !
+		| 17			| 1966 GFlops
+		| 18			| 2083 GFlops
+		| 19			| 2200 GFlops
+		| 20			| 2315 GFlops !
+----------------+-----------------------+-------------
+60		| 4			| 830 GFlops
+		| 8			| 1425 GFlops 
+		| 12			| 1653 GFlops
+		| 16			| 1730 GFlops
+		| 20			| 1737 GFlops
+----------------+-----------------------+-------------
+40		| 8			| 948 GFlops
+		| 12			| 1101 GFlops 
+		| 16			| 1153 GFlops
+		| 20			| 1156 GFlops
+----------------+-----------------------+-------------
+20		| 8			| 472 GFlops
+		| 16			| 576 GFlops
+		| 20			| 578 GFlops
+----------------+-----------------------+-------------
+10		| 8			| 233 GFlops
+		| 20			| 288 GFlops
+
+
+		RadeonVII trials
+
+ Grid size	| Wavefront count (x64)	| Performance
+----------------+-----------------------+-------------
+80		| 1			| 208 GFlops
+		| 2			| 225 GFlops
+		| 3			| 338 GFlops
+		| 4			| 443 GFlops !
+		| 5			| 282 GFlops
+		| 6			| 338 GFlops
+		| 7			| 393 GFlops
+		| 8			| 444 GFlops !
+----------------+-----------------------+------------
+60		| 4			| 621 GFlops
+		| 8			| 664 GFlops
+----------------+-----------------------+------------
+40		| 4			| 421 GFlops
+		| 8			| 445 GFlops
+----------------+-----------------------+------------
+20		| 4			| 208 GFlops
+		| 8			| 223 GFlops

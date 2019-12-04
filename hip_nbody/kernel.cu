@@ -92,7 +92,7 @@ double total_energy = 0;
 
 void alloc() {
 	cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
-	
+
 	cudaStreamCreate(&stream);
 
 	cudaMallocHost(&all_raw[0], MEM_LEN * 6);
@@ -101,9 +101,9 @@ void alloc() {
 
 	pos = &all_raw[POS];
 	vel = &all_raw[VEL];
-	
+
 	vec_all.init();
-	
+
 	cudaMalloc(&energy, MEM_LEN);
 	cudaMallocHost(&_energy, MEM_LEN);
 
@@ -388,14 +388,14 @@ void print_chars() {
 	printf("sharedMemPerBlock: %zu\n", chars.sharedMemPerBlock);
 	printf("maxThreadsDim: %d\n", chars.maxThreadsDim[0]);
 	printf("maxThreadsPerMultiProcessor: %d\n", chars.maxThreadsPerMultiProcessor);
-	printf("regsPerBlock: %d\n\n", chars.regsPerBlock);
+	printf("regsPerBlock: %d\n", chars.regsPerBlock);
+	printf("warpSize: %d\n\n", chars.warpSize);
 
 #ifndef __HIPCC__
 	printf("singleToDoublePrecisionPerfRatio: %d\n", chars.singleToDoublePrecisionPerfRatio);
 	printf("kernelExecTimeoutEnabled: %d\n", chars.kernelExecTimeoutEnabled);
 	printf("regsPerMultiprocessor: %d\n", chars.regsPerMultiprocessor);
 	printf("sharedMemPerMultiprocessor: %zu\n", chars.sharedMemPerMultiprocessor);
-	printf("warpSize: %d\n\n", chars.warpSize);
 #endif
 	cudaFuncAttributes attr;
 	cudaFuncGetAttributes(&attr, euler_gpu);

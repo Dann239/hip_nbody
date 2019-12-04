@@ -3,6 +3,10 @@
 #define ENABLE_EM
 #define ENABLE_LJ
 
+constexpr int BLOCK_SIZE = 256; //optimal is 128 * N for nvidia, 256 * N for amd
+constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
+constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
+
 constexpr double _cbrt(double a) {
 	if (a < 0)
 		return -_cbrt(-a);
@@ -36,10 +40,6 @@ constexpr double _sqrt(double a) {
 	}
 }
 
-constexpr int BLOCK_SIZE = 512; //optimal is 128 * N
-constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
-constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
-
 constexpr double PI = 3.14159265359;
 constexpr double K = 1.380649e-23;
 constexpr double NA = 6.022141e23;
@@ -55,8 +55,8 @@ constexpr double N = P / (K * T);
 constexpr double SIZE = _cbrt(AMOUNT / N);
 
 constexpr double TIME_STEP = 3e-14;
-constexpr int SKIPS = 50;
-constexpr int NSTEPS = -1;
+constexpr int SKIPS = 250;
+constexpr int NSTEPS = 3;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
