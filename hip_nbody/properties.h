@@ -37,7 +37,7 @@ constexpr double _sqrt(double a) {
 }
 
 constexpr int BLOCK_SIZE = 512; //optimal is 128 * N
-constexpr int GRID_SIZE = 20; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double PI = 3.14159265359;
@@ -62,6 +62,9 @@ constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE = 0, HELIUM, ELECTRON, PROTON, ERROR};
+
+#define POS 0
+#define VEL 3
 
 constexpr int ELEMS_NUM = 2;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49999, 1 };

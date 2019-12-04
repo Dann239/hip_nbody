@@ -1,7 +1,7 @@
 #pragma once
 
-extern double* pos[3];
-extern double* vel[3];
+extern double** pos;
+extern double** vel;
 extern double total_energy, potential_energy, kinetic_energy;
 
 void alloc();
