@@ -212,10 +212,10 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float s
 	d -= roundf(d);
 
 	float d2 = hypotf2(d);
+	float r2 = d2 * ss_ss;
 
 #ifdef ENABLE_LJ
-	float r2 = d2 * ss_ss,
-		r_2 = 1.f / r2,
+	float r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2,
 		r_8 = r_4 * r_4,
@@ -224,80 +224,92 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float s
 #endif
 
 #ifdef ENABLE_EM
-	double d_2 = 1.f / d2,
-		d_1 = sqrtf(d_2);
-	a_em += (d_2 * d_1 * d);
+	float d_2;
+	if(r2 > 1.f)
+		d_2 = 1.f / d2;
+	else
+		d_2 = ss_ss;
+	float d_1 = sqrtf(d_2);
+	float em_coeff = d_2 * d_1;
+	a_em += (em_coeff * d);
 #endif
 }
 
-__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, double ss_ss) {
+__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss) {
 	float3 d = p - _p;
 	d -= roundf(d);
 
 	float d2 = hypotf2(d);
+	float r2 = d2 * ss_ss;
 
 #ifdef ENABLE_LJ
-	float r2 = d2 * ss_ss,
-		r_2 = 1.f / r2,
+	float r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
 	e_lj += (r_6 - 1.f) * r_6;
 #endif
 
 #ifdef ENABLE_EM
-	float d_1 = 1.f / sqrtf(d2);
+	float d_2, d_1;
+	if(r2 > 1.f)
+		d_2 = 1.f / d2;
+	else
+		d_2 = ss_ss;
+	d_1 = sqrtf(d_2);
+	if(r2 < 1.f)
+		d_1 += 0.5f * d_1 * (1.f - r2);
 	e_em += d_1;
 #endif
 }
 
-#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)	\
-	int tid = threadIdx.x,														\
-	bid = blockIdx.x,															\
-	ind = bid * blockDim.x + tid;												\
-																				\
-	double3 p = 1. / SIZE * vec_all.get(ind, POS),								\
-	v = vec_all.get(ind, VEL);													\
-																				\
-	float3 p_f = to_f3(p);														\
-	properties _P0 = props[get_elem(bid, props[0])];							\
-																				\
-	double lj_coeff[ELEMS_NUM];													\
-	double em_coeff[ELEMS_NUM];													\
-	float ss_ss[ELEMS_NUM];														\
-	for(int i = 0; i < ELEMS_NUM; i++) {										\
-		properties _P = props[i];												\
-		double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);						\
-		double sigma = (_P.SIGMA + _P0.SIGMA) / 2;								\
-		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);								\
-		__COEFFS__																\
-	}																			\
-	extern __shared__ float shm[];												\
-	float* _posx = shm;															\
-	float* _posy = &shm[BLOCK_SIZE];											\
-	float* _posz = &shm[BLOCK_SIZE * 2];										\
-	int props_ind = 0;															\
-	for (int i = 0; i < GRID_SIZE; i++) {										\
-																				\
-		__syncthreads();														\
-		float3 _pos = to_f3(1. / SIZE * vec_all.get(i * BLOCK_SIZE + tid, POS));\
-		_posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;			\
-																				\
-		if ( invalid_elem(i, _P0, props_ind ))									\
-			props_ind++;														\
-																				\
-		__INIT__																\
-																				\
-		__syncthreads();														\
-		for (int j = 0; j < BLOCK_SIZE; j++) {									\
-			float3 _p = float3({_posx[j],_posy[j],_posz[j]});					\
-			if (i != bid || j != tid) {											\
-				__BODY__														\
-			}																	\
-		}																		\
-		__POST__																\
-	}																			\
-																				\
-	p = SIZE * p;
+#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)  \
+    int tid = threadIdx.x,                                                      \
+    bid = blockIdx.x,                                                           \
+    ind = bid * BLOCK_SIZE + tid;                                               \
+                                                                                \
+    double3 p = 1. / SIZE * vec_all.get(ind, POS),                              \
+    v = vec_all.get(ind, VEL);                                                  \
+                                                                                \
+    float3 p_f = to_f3(p);                                                      \
+    properties _P0 = props[get_elem(bid, props[0])];                            \
+                                                                                \
+    double lj_coeff[ELEMS_NUM];                                                 \
+    double em_coeff[ELEMS_NUM];                                                 \
+    float ss_ss[ELEMS_NUM];                                                     \
+    for(int i = 0; i < ELEMS_NUM; i++) {                                        \
+        properties _P = props[i];                                               \
+        double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);                        \
+        double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                              \
+        ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
+        __COEFFS__                                                              \
+    }                                                                           \
+    extern __shared__ float shm[];                                              \
+    float* _posx = shm;                                                         \
+    float* _posy = &shm[BLOCK_SIZE];                                            \
+    float* _posz = &shm[BLOCK_SIZE * 2];                                        \
+    int props_ind = 0;                                                          \
+    for (int i = 0; i < GRID_SIZE; i++) {                                       \
+                                                                                \
+        __syncthreads();                                                        \
+        float3 _pos = to_f3(1. / SIZE * vec_all.get(i * blockDim.x + tid, POS));\
+        _posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;          \
+                                                                                \
+        if ( invalid_elem(i, _P0, props_ind ))                                  \
+            props_ind++;                                                        \
+                                                                                \
+        __INIT__                                                                \
+                                                                                \
+        __syncthreads();                                                        \
+        for (int j = 0; j < BLOCK_SIZE; j++) {                                  \
+            float3 _p = float3({_posx[j],_posy[j],_posz[j]});                   \
+            if (i != bid || j != tid) {                                         \
+                __BODY__                                                        \
+            }                                                                   \
+        }                                                                       \
+        __POST__                                                                \
+    }                                                                           \
+                                                                                \
+    p = SIZE * p;
 
 
 __global__
