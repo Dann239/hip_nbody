@@ -113,8 +113,9 @@ int main() {
 		pull_values();
 		print_err(false);
 
-		cout.precision(3);
+		cout.precision(6);
 		cout << fixed << "E = " << (total_energy / E * 1e3) << " meV; ";
+		cout.precision(3);
 		cout << fixed << "Ep = " << (potential_energy / E * 1e3) << " meV; ";
 		cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
 		cout << fixed << "T = " << (2. / 3. * kinetic_energy / K) << " K; ";

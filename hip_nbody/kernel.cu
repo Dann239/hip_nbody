@@ -3,6 +3,7 @@
 #ifndef __HIPCC__
 #include "device_launch_parameters.h"
 #include "cuda_runtime_api.h"
+#include "math_functions.h"
 #endif
 
 #if defined __INTELLISENSE__
@@ -207,61 +208,6 @@ __device__ float3 to_f3(double3 a) {
 	return {(float)a.x, (float)a.y, (float)a.z};
 }
 
-__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss) {
-	float3 d = p - _p;
-	d -= roundf(d);
-
-	float d2 = hypotf2(d);
-	float r2 = d2 * ss_ss;
-
-#ifdef ENABLE_LJ
-	float r_2 = 1.f / r2,
-		r_4 = r_2 * r_2,
-		r_6 = r_4 * r_2,
-		r_8 = r_4 * r_4,
-		_2r_14__r_8 = (r_6 - .5f) * r_8;
-	a_lj += (_2r_14__r_8 * d);
-#endif
-
-#ifdef ENABLE_EM
-	float d_2;
-	if(r2 > 1.f)
-		d_2 = 1.f / d2;
-	else
-		d_2 = ss_ss;
-	float d_1 = sqrtf(d_2);
-	float em_coeff = d_2 * d_1;
-	a_em += (em_coeff * d);
-#endif
-}
-
-__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss) {
-	float3 d = p - _p;
-	d -= roundf(d);
-
-	float d2 = hypotf2(d);
-	float r2 = d2 * ss_ss;
-
-#ifdef ENABLE_LJ
-	float r_2 = 1.f / r2,
-		r_4 = r_2 * r_2,
-		r_6 = r_4 * r_2;
-	e_lj += (r_6 - 1.f) * r_6;
-#endif
-
-#ifdef ENABLE_EM
-	float d_2, d_1;
-	if(r2 > 1.f)
-		d_2 = 1.f / d2;
-	else
-		d_2 = ss_ss;
-	d_1 = sqrtf(d_2);
-	if(r2 < 1.f)
-		d_1 += 0.5f * d_1 * (1.f - r2);
-	e_em += d_1;
-#endif
-}
-
 #define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)  \
     int tid = threadIdx.x,                                                      \
     bid = blockIdx.x,                                                           \
@@ -291,12 +237,10 @@ __device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _
     for (int i = 0; i < GRID_SIZE; i++) {                                       \
                                                                                 \
         __syncthreads();                                                        \
-        float3 _pos = to_f3(1. / SIZE * vec_all.get(i * blockDim.x + tid, POS));\
+        float3 _pos = to_f3(1. / SIZE * vec_all.get(i * BLOCK_SIZE + tid, POS));\
         _posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;          \
                                                                                 \
-        if ( invalid_elem(i, _P0, props_ind ))                                  \
-            props_ind++;                                                        \
-                                                                                \
+        if(!invalid_elem(i, _P0, props_ind + 1)) props_ind++;                   \
         __INIT__                                                                \
                                                                                 \
         __syncthreads();                                                        \
@@ -311,6 +255,57 @@ __device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _
                                                                                 \
     p = SIZE * p;
 
+constexpr float ss_rr = (float)((SIZE * SIZE) / (R0 * R0));
+constexpr float rr_ss = 1 / ss_rr;
+__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss) {
+	float3 d = p - _p;
+	d -= roundf(d);
+
+	float d2 = hypotf2(d);
+
+#ifdef ENABLE_LJ
+	float r2 = d2 * ss_ss,
+		r_2 = 1.f / r2,
+		r_4 = r_2 * r_2,
+		r_6 = r_4 * r_2,
+		r_8 = r_4 * r_4,
+		_2r_14__r_8 = (r_6 - .5f) * r_8;
+	a_lj += (_2r_14__r_8 * d);
+#endif
+
+#ifdef ENABLE_EM
+	if (d2 < rr_ss)
+		d2 = rr_ss;
+	float d_1 = rsqrtf(d2);
+	float em_coeff = d_1 * d_1 * d_1;
+	a_em += (em_coeff * d);
+#endif
+}
+
+__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss) {
+	float3 d = p - _p;
+	d -= roundf(d);
+
+	float d2 = hypotf2(d);
+
+#ifdef ENABLE_LJ
+	float r2 = d2 * ss_ss,
+		r_2 = 1.f / r2,
+		r_4 = r_2 * r_2,
+		r_6 = r_4 * r_2;
+	e_lj += (r_6 - 1.f) * r_6;
+#endif
+
+#ifdef ENABLE_EM
+	float d2_old = d2;
+	if (d2_old < rr_ss)
+		d2 = rr_ss;
+	float d_1 = rsqrtf(d2);
+	if (d2_old < rr_ss)
+		d_1 += d_1 * (.5f - .5f * ss_rr * d2_old);
+	e_em += d_1;
+#endif
+}
 
 __global__
 void euler_gpu(const vec<6> vec_all, properties* props) {
@@ -319,7 +314,7 @@ void euler_gpu(const vec<6> vec_all, properties* props) {
 
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / _P0.M;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) * _P0.Q * _P.Q / SIZE / SIZE / _P0.M;
+		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / SIZE * _P0.Q * _P.Q / _P0.M;
 	,
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
@@ -357,7 +352,7 @@ void energy_gpu (const vec<6> vec_all, double* energy, properties* props) {
 		e_em += em_coeff[props_ind] * de_em;
 	);
 
-	double e_k = _P0.M * hypot2(v) / 2.;
+	double e_k = _P0.M * hypot2(v) / 2;
 
 	energy[ind] = e_em + e_lj;
 }
@@ -367,7 +362,7 @@ void energy_calc() {
 	kinetic_energy = 0;
 	for (int i = 0; i < AMOUNT; i++) {
 		potential_energy += _energy[i] / AMOUNT;
-		kinetic_energy += get_properties(i).M * hypot2(extract(vel, i)) / 2. / AMOUNT;
+		kinetic_energy += get_properties(i).M * hypot2(extract(vel, i)) / 2 / AMOUNT;
 	}
 	total_energy = potential_energy + kinetic_energy;
 }
