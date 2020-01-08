@@ -2,6 +2,11 @@
 
 extern double** pos;
 extern double** vel;
+extern double** acc;
+
+extern double*& energy;
+extern double*& dedv;
+
 extern double total_energy, potential_energy, kinetic_energy;
 
 void alloc();

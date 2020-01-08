@@ -48,7 +48,7 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 1000;
+constexpr double T = 100;
 constexpr double P = 1;
 constexpr double N = P / (K * T);
 
@@ -63,9 +63,6 @@ constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y, Z};
 enum ELEMS {ASTATINE, HELIUM, ELECTRON, PROTON, ERROR};
-
-#define POS 0
-#define VEL 3
 
 constexpr int ELEMS_NUM = 2;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49999, 1 };
