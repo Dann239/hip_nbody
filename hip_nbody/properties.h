@@ -48,15 +48,16 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 100;
+constexpr double T = 1000;
 constexpr double P = 1;
 constexpr double N = P / (K * T);
 
-constexpr double R0 = 1e-8;
-constexpr double SIZE = _cbrt(AMOUNT / N);
+constexpr double V = AMOUNT / N;
+constexpr double SIZE = _cbrt(V);
 
+constexpr double R0 = 1e-8;
 constexpr double TIME_STEP = 1e-14;
-constexpr int SKIPS = 100;
+constexpr int SKIPS = 250;
 constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);

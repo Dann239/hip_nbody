@@ -87,6 +87,23 @@ long long mtime() {
 	return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
 }
 
+double potential_energy = 0;
+double kinetic_energy = 0;
+double dedv_pressure = 0;
+double virial = 0;
+void energy_calc() {
+	potential_energy = 0;
+	dedv_pressure = 0;
+	kinetic_energy = 0;
+	virial = 0;
+	for (int i = 0; i < AMOUNT; i++) {
+		potential_energy += enrg[i] / AMOUNT;
+		dedv_pressure += dedv[i];
+		kinetic_energy += get_properties(i).M * (vel[X][i] * vel[X][i] + vel[Y][i] * vel[Y][i] + vel[Z][i] * vel[Z][i]) / 2 / AMOUNT;
+		virial += viri[i];
+	}
+}
+
 int main() {
 	print_chars();
 
@@ -95,13 +112,14 @@ int main() {
 	//load();
 
 	window_init();
-	force_energy_calc();
 
+	force_energy_calc();
 	signal(SIGINT, interrupter);
 
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
 		long long t0 = mtime();
 		euler_steps(SKIPS);
+		energy_calc();
 
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
@@ -114,11 +132,14 @@ int main() {
 		print_err(false);
 
 		cout.precision(6);
-		cout << fixed << "E = " << (total_energy / E * 1e3) << " meV; ";
+		cout << fixed << "E = " << ((potential_energy + kinetic_energy) / E * 1e3) << " meV; ";
 		cout.precision(3);
-		cout << fixed << "Ep = " << (potential_energy / E * 1e3) << " meV; ";
-		cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
+		//cout << fixed << "Ep = " << (potential_energy / E * 1e3) << " meV; ";
+		//cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
 		cout << fixed << "T = " << (2. / 3. * kinetic_energy / K) << " K; ";
+		cout.precision(6);
+		cout << fixed << "-dE/dV = " << dedv_pressure * 1000 << " mPa; ";
+		cout << fixed << "virial = " << virial * 1000 << " mPa; ";
 		cout << "dt = " << (long long)mtime() - t0 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops)" << endl;
 	}
 	window_delete();
