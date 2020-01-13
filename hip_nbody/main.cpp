@@ -125,6 +125,7 @@ void energy_calc() {
 	if(amount_e) kinetic_energy_e /= amount_e;
 	if(amount_i) kinetic_energy_i /= amount_i;
 }
+
 void datadump() {
 	static ofstream out("data/datadump.csv");
 	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
@@ -133,6 +134,17 @@ void datadump() {
 	out << virial << ','; //p_v
 	out << potential_energy + kinetic_energy + field_energy; //E
 	out << endl;
+}
+
+void output(long long t0) {
+	cout.precision(6);
+	cout << fixed << "E = " << ((potential_energy + kinetic_energy + field_energy) / E * 1e3) << " meV; ";
+	cout.precision(3);
+	cout << fixed << "T = " << (2. / 3. * kinetic_energy_i / K) << " K; ";
+	cout << fixed << "Te = " << (2. / 3. * kinetic_energy_e / K) << " K; ";
+	cout << fixed << "p_viri = " << virial * 1000 << " mPa; ";
+	cout << fixed << "j = " << current / 1000 << " kA/m2; ";
+	cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
 }
 int main() {
 	print_chars();
@@ -149,7 +161,6 @@ int main() {
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
 		long long t0 = ntime();
 		euler_steps(SKIPS);
-		energy_calc();
 
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
@@ -157,22 +168,15 @@ int main() {
 			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, get_properties(i).COLOUR);
 		window_show();
 	#endif
-
+		energy_calc();
+		datadump();
 		pull_values();
+		output(t0);
 		print_err(false);
-
-		cout.precision(6);
-		cout << fixed << "E = " << ((potential_energy + kinetic_energy + field_energy) / E * 1e3) << " meV; ";
-		cout.precision(3);
-		cout << fixed << "T = " << (2. / 3. * kinetic_energy_i / K) << " K; ";
-		cout << fixed << "Te = " << (2. / 3. * kinetic_energy_e / K) << " K; ";
-		cout << fixed << "p_viri = " << virial * 1000 << " mPa; ";
-		cout << fixed << "j = " << current / 1000 << " kA/m2; ";
-		cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
 	}
 	window_delete();
 
-	//dump();
+	dump();
 	dealloc();
 	return 0;
 }
