@@ -387,9 +387,10 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
 		a_em += em_coeff[props_ind] * da_em;
-	)
+		)
 
-	double3 a = a_lj + a_em;
+	double3 a_eext = { E_EXT * _P0.Q / _P0.M, 0, 0 };
+	double3 a = a_lj + a_em + a_eext;
 
 	v += TIME_STEP * a;
 	p += TIME_STEP * v;

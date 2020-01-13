@@ -343,3 +343,4 @@ SFML/
 *.run
 *.ptx
 *.nvact
+*.nb

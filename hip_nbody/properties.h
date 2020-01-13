@@ -2,10 +2,10 @@
 
 #define ENABLE_EM
 //#define ENABLE_LJ
-//#define ENABLE_PB
+#define ENABLE_PB
 
-constexpr int BLOCK_SIZE = 1; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 2; //optimal is SMM_count * M
+constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
+constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -49,16 +49,17 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 0;
+constexpr double T = 1000;
 constexpr double P = 1;
-constexpr double N = 7e19;//P / (K * T);
+constexpr double N = P / (K * T);
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
+constexpr double E_EXT = 1000;
 constexpr double R0 = 1e-7;
 constexpr double TIME_STEP = 1e-16;
-constexpr int SKIPS = 1;
+constexpr int SKIPS = 100;
 constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
