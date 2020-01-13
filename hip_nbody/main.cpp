@@ -125,7 +125,15 @@ void energy_calc() {
 	if(amount_e) kinetic_energy_e /= amount_e;
 	if(amount_i) kinetic_energy_i /= amount_i;
 }
-
+void datadump() {
+	static ofstream out("data/datadump.csv");
+	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
+	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
+	out << current << ','; //j
+	out << virial << ','; //p_v
+	out << potential_energy + kinetic_energy + field_energy; //E
+	out << endl;
+}
 int main() {
 	print_chars();
 
