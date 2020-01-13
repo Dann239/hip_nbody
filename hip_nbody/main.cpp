@@ -138,8 +138,13 @@ int main() {
 		//cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
 		cout << fixed << "T = " << (2. / 3. * kinetic_energy / K) << " K; ";
 		cout.precision(6);
-		cout << fixed << "-dE/dV = " << dedv_pressure * 1000 << " mPa; ";
-		cout << fixed << "virial = " << virial * 1000 << " mPa; ";
+		cout << fixed << "p_therm = " << dedv_pressure * 1000 << " mPa; ";
+		cout << fixed << "p_viri = " << virial * 1000 << " mPa; ";
+		double p_theor = -(E * E * E * AMOUNT / (3 * V)) * sqrt(PI * AMOUNT / (T * V)) * 1000;
+		if (p_theor == 0)
+			cout << " oops ";
+		cout.precision(100);
+		cout << "p_theor = " << p_theor << "mPa; ";
 		cout << "dt = " << (long long)mtime() - t0 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops)" << endl;
 	}
 	window_delete();
