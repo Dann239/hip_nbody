@@ -83,25 +83,40 @@ double deflect(double& p) {
 	return p;
 }
 
-long long mtime() {
-	return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+long long ntime() {
+	return chrono::duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count();
 }
 
 double potential_energy = 0;
-double kinetic_energy = 0;
+double kinetic_energy_i = 0;
+double kinetic_energy_e = 0;
 double dedv_pressure = 0;
 double virial = 0;
 void energy_calc() {
 	potential_energy = 0;
 	dedv_pressure = 0;
-	kinetic_energy = 0;
+	kinetic_energy_i = 0;
+	kinetic_energy_e = 0;
+	int amount_i = 0, amount_e = 0;
 	virial = 0;
 	for (int i = 0; i < AMOUNT; i++) {
 		potential_energy += enrg[i] / AMOUNT;
+
+		double dk = get_properties(i).M * (vel[X][i] * vel[X][i] + vel[Y][i] * vel[Y][i] + vel[Z][i] * vel[Z][i]) / 2;
+		if(get_elem_type(i) == ELECTRON) {
+			kinetic_energy_e += dk;
+			amount_e++;
+		}
+		else {
+			kinetic_energy_i += dk;
+			amount_i++;
+		}
+
 		dedv_pressure += dedv[i];
-		kinetic_energy += get_properties(i).M * (vel[X][i] * vel[X][i] + vel[Y][i] * vel[Y][i] + vel[Z][i] * vel[Z][i]) / 2 / AMOUNT;
 		virial += viri[i];
 	}
+	if(amount_e) kinetic_energy_e /= amount_e;
+	if(amount_i) kinetic_energy_i /= amount_i;
 }
 
 int main() {
@@ -117,7 +132,7 @@ int main() {
 	signal(SIGINT, interrupter);
 
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
-		long long t0 = mtime();
+		long long t0 = ntime();
 		euler_steps(SKIPS);
 		energy_calc();
 
@@ -132,24 +147,26 @@ int main() {
 		print_err(false);
 
 		cout.precision(6);
-		cout << fixed << "E = " << ((potential_energy + kinetic_energy) / E * 1e3) << " meV; ";
+		cout << fixed << "E = " << ((potential_energy + kinetic_energy_i + kinetic_energy_e) / E * 1e3) << " meV; ";
 		cout.precision(3);
-		//cout << fixed << "Ep = " << (potential_energy / E * 1e3) << " meV; ";
-		//cout << fixed << "Ek = " << (kinetic_energy / E * 1e3) << " meV; ";
-		cout << fixed << "T = " << (2. / 3. * kinetic_energy / K) << " K; ";
-		cout.precision(6);
-		cout << fixed << "p_therm = " << dedv_pressure * 1000 << " mPa; ";
+		cout << fixed << "T = " << (2. / 3. * kinetic_energy_i / K) << " K; ";
+		cout << fixed << "Te = " << (2. / 3. * kinetic_energy_e / K) << " K; ";
 		cout << fixed << "p_viri = " << virial * 1000 << " mPa; ";
-		double p_theor = -(E * E * E * AMOUNT / (3 * V)) * sqrt(PI * AMOUNT / (T * V)) * 1000;
-		if (p_theor == 0)
-			cout << " oops ";
-		cout.precision(100);
-		cout << "p_theor = " << p_theor << "mPa; ";
-		cout << "dt = " << (long long)mtime() - t0 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / (((long long)mtime() - t0) * 1000000) << " GFlops)" << endl;
+		cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
+		
+		cout.precision(6);
+		cout << fixed << "Ep = " << potential_energy / E * 1e3 << " meV; ";
+		cout << fixed << "Ek = " << (kinetic_energy_e + kinetic_energy_i) / E * 1e3 << " meV; ";
+		cout << endl;
+		for(int j = 0; j < AMOUNT; j++) {
+			cout << enrg[j] / E * 1e3 << ' ';
+			cout << get_properties(j).M * (vel[X][j] * vel[X][j] + vel[Y][j] * vel[Y][j] + vel[Z][j] * vel[Z][j]) / 2 / E * 1e3 << endl;
+		}
+		cout << endl;
 	}
 	window_delete();
 
-	dump();
+	//dump();
 	dealloc();
 	return 0;
 }

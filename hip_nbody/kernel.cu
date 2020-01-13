@@ -155,8 +155,12 @@ __host__ __device__ int get_elem(int block, properties p) {
 	return ERROR;
 }
 
+ELEMS get_elem_type(int num) {
+	return ELEMS_TYPES[get_elem(num / BLOCK_SIZE, properties(ERROR))];
+}
+
 properties get_properties(int num) {
-	return properties(ELEMS_TYPES[get_elem(num / BLOCK_SIZE, properties(ERROR))]);
+	return properties(get_elem_type(num));
 }
 
 __host__ __device__ double hypot2(double3 p) {
@@ -228,14 +232,22 @@ __device__ float3 to_f3(double3 a) {
                                                                                 \
     double lj_coeff[ELEMS_NUM];                                                 \
     double em_coeff[ELEMS_NUM];                                                 \
-    float ss_ss[ELEMS_NUM];                                                     \
-    for(int i = 0; i < ELEMS_NUM; i++) {                                        \
+	float ss_ss[ELEMS_NUM];                                                     \
+	float rr_ss[ELEMS_NUM];                                                     \
+	                                                                            \
+	for(int i = 0; i < ELEMS_NUM; i++) {                                        \
+		                                                                        \
         properties _P = props[i];                                               \
         double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);                        \
         double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                              \
-        ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
+		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
+		                                                                        \
+		rr_ss[i] = _P.Q * _P0.Q > 0 ? 0 : (R0 * R0) / (SIZE * SIZE);            \
+		/*rr_ss[i] = 0;*/                                                       \
+		                                                                        \
         __COEFFS__                                                              \
-    }                                                                           \
+	}                                                                           \
+	                                                                            \
     extern __shared__ float shm[];                                              \
     float* _posx = shm;                                                         \
     float* _posy = &shm[blockDim.x];                                            \
@@ -260,13 +272,14 @@ __device__ float3 to_f3(double3 a) {
         __POST__                                                                \
     }                                                                           \
                                                                                 \
-    p = SIZE * p;
+	p = SIZE * p;                                                               \
 
-constexpr float ss_rr = (float)((SIZE * SIZE) / (R0 * R0));
-constexpr float rr_ss = 1 / ss_rr;
-__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss) {
+
+__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss, float rr_ss) {
 	float3 d = p - _p;
+#ifdef ENABLE_PB
 	d -= roundf(d);
+#endif
 
 	float d2 = hypotf2(d);
 
@@ -290,12 +303,14 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float s
 }
 
 constexpr float
-	c1 = (float)_sqrt(ss_rr) * 1.5f,
-	c2 = -(float)_sqrt(ss_rr) * ss_rr * 0.5f;
+	c1 = (float)(SIZE / R0) * 1.5f,
+	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * 0.5f;
 
-__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss, double& dedv_lj, double& dedv_em) {
+__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss, double& dedv_lj, double& dedv_em, float rr_ss) {
 	float3 d = p - _p;
+#ifdef ENABLE_PB
 	d -= roundf(d);
+#endif
 
 	float d2 = hypotf2(d);
 
@@ -327,9 +342,11 @@ __device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _
 #endif
 }
 
-__device__ void get_viri(double& v_lj, double& v_em, float3 p, float3 _p, float ss_ss) {
+__device__ void get_viri(double& v_lj, double& v_em, float3 p, float3 _p, float ss_ss, float rr_ss) {
 	float3 d = p - _p;
+#ifdef ENABLE_PB
 	d -= roundf(d);
+#endif
 
 	float d2 = hypotf2(d);
 
@@ -366,7 +383,7 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
 	,
-		get_a(da_lj, da_em, p_f, _p, ss_ss[props_ind]);
+		get_a(da_lj, da_em, p_f, _p, ss_ss[props_ind], rr_ss[props_ind]);
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
 		a_em += em_coeff[props_ind] * da_em;
@@ -398,7 +415,7 @@ void energy_gpu (const vec<NVECS> vec_all, const vec<NSCALS> scal_all, propertie
 		double ddedv_lj = 0;
 		double ddedv_em = 0;
 	,
-		get_e(de_lj, de_em, p_f, _p, ss_ss[props_ind], ddedv_lj, ddedv_em);
+		get_e(de_lj, de_em, p_f, _p, ss_ss[props_ind], ddedv_lj, ddedv_em, rr_ss[props_ind]);
 	,
 		e_lj += lj_coeff[props_ind] * de_lj;
 		e_em += em_coeff[props_ind] * de_em;
@@ -421,7 +438,7 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, const vec<NSCALS> scal_all, p
 		double dv_lj = 0;
 		double dv_em = 0;
 	,
-		get_viri(dv_lj, dv_em, p_f, _p, ss_ss[props_ind]);
+		get_viri(dv_lj, dv_em, p_f, _p, ss_ss[props_ind], rr_ss[props_ind]);
 	,
 		v_lj += lj_coeff[props_ind] * dv_lj;
 		v_em += em_coeff[props_ind] * dv_em;
@@ -450,6 +467,7 @@ void euler_steps(int steps) {
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3 >>> (vec_all, scal_all, props);
+	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, scal_all, props);
 #endif
 	scal_all.invalidate();
 	scal_all.get_all();
