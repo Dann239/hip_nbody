@@ -474,6 +474,21 @@ void force_energy_calc() {
 	scal_all.get_all();
 }
 
+bool selectDevice(int deviceIndex) {
+	int devicesCount;
+	cudaGetDeviceCount(&devicesCount);
+
+	cudaDeviceProp deviceProperties;
+    cudaGetDeviceProperties(&deviceProperties, deviceIndex);
+
+	if (deviceProperties.major >= 6 && deviceProperties.minor >= 0) {
+            cudaSetDevice(deviceIndex);
+            return true;
+        }
+
+	return false;
+}
+
 void print_chars() {
 	cudaDeviceProp chars;
 

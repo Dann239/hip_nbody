@@ -127,7 +127,7 @@ void energy_calc() {
 }
 
 void datadump() {
-	static ofstream out("data/datadump.csv");
+	static ofstream out("data/datadump_1000(try 2).csv");
 	out.precision(30);
 	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
 	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
@@ -147,7 +147,11 @@ void output(long long t0) {
 	cout << fixed << "j = " << current / 1000 << " kA/m2; ";
 	cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
 }
-int main() {
+
+int main(int argc, char* argv[], char* envp[]) {
+	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
+		return -1;
+
 	print_chars();
 
 	alloc();
