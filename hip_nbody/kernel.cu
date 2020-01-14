@@ -479,7 +479,7 @@ bool selectDevice(int deviceIndex) {
 	cudaGetDeviceCount(&devicesCount);
 
 	cudaDeviceProp deviceProperties;
-    cudaGetDeviceProperties(&deviceProperties, deviceIndex);
+	cudaGetDeviceProperties(&deviceProperties, deviceIndex);
 
 	if (deviceProperties.major >= 6 && deviceProperties.minor >= 0) {
             cudaSetDevice(deviceIndex);
