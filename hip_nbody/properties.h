@@ -58,7 +58,8 @@ constexpr double SIZE = _cbrt(V);
 
 constexpr double E_EXT = 0;
 constexpr double R0 = 5e-9;
-constexpr double TIME_STEP = 1e-16;
+constexpr double TIME_STEP = 5e-17;
+constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
 constexpr int SKIPS = 100;
 constexpr int NSTEPS = -1;
 
