@@ -336,8 +336,8 @@ hip_nbody/hip/*.out
 hip_nbody/hip/*.h
 hip_nbody/hip/*.cpp
 hip_nbody/hip/*.cuh
-hip_nbody/data/*.dat
-hip_nbody/data/*.csv
+hip_nbody/data/*
+hip_nbody/hip/data/*
 
 SFML/
 *.run

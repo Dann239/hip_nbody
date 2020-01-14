@@ -5,7 +5,7 @@
 #define ENABLE_PB
 
 constexpr int BLOCK_SIZE = 256; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 80; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 28; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -56,8 +56,8 @@ constexpr double N = P / (K * T);
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
-constexpr double E_EXT = 1000;
-constexpr double R0 = 1e-7;
+constexpr double E_EXT = 0;
+constexpr double R0 = 5e-9;
 constexpr double TIME_STEP = 1e-16;
 constexpr int SKIPS = 100;
 constexpr int NSTEPS = -1;

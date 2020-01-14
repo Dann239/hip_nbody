@@ -64,7 +64,7 @@ void dump() {
 	out.close();
 }
 void load() {
-	ifstream in("data/dump.dat", ios::binary);
+	ifstream in("data/dump_relaxed.dat", ios::binary);
 	if (!in.fail()) {
 		for (int i = 0; i < 3; i++) {
 			in.read((char*)pos[i], AMOUNT * sizeof(double));
@@ -128,11 +128,12 @@ void energy_calc() {
 
 void datadump() {
 	static ofstream out("data/datadump.csv");
+	out.precision(30);
 	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
 	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
 	out << current << ','; //j
 	out << virial << ','; //p_v
-	out << potential_energy + kinetic_energy + field_energy; //E
+	out << (potential_energy + kinetic_energy + field_energy) / E; //E
 	out << endl;
 }
 
@@ -151,7 +152,7 @@ int main() {
 
 	alloc();
 	randomize();
-	//load();
+	load();
 
 	window_init();
 
