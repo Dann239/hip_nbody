@@ -127,7 +127,7 @@ void energy_calc() {
 }
 
 void datadump() {
-	static ofstream out("data/datadump_1000(try 2).csv");
+	static ofstream out("data/datadump.csv");
 	out.precision(30);
 	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
 	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
