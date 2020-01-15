@@ -242,7 +242,7 @@ __device__ float3 to_f3(double3 a) {
         double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                              \
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
 		                                                                        \
-		rr_ss[i] = _P.Q * _P0.Q > 0 ? 0 : (R0 * R0) / (SIZE * SIZE);            \
+		rr_ss[i] = (R0 * R0) / (SIZE * SIZE);                                   \
 		/*rr_ss[i] = 0;*/                                                       \
 		                                                                        \
         __COEFFS__                                                              \

@@ -57,10 +57,10 @@ constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
 constexpr double E_EXT = 0;
-constexpr double TIME_STEP = 5e-16;
+constexpr double TIME_STEP = 1e-16;
 constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
 constexpr double R0 = R_DEBYE * 0.05;
-constexpr int SKIPS = 10000;
+constexpr int SKIPS = 1000;
 constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
