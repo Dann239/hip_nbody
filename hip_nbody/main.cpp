@@ -161,6 +161,8 @@ int main(int argc, char* argv[], char* envp[]) {
 	window_init();
 
 	force_energy_calc();
+	pull_values();
+
 	signal(SIGINT, interrupter);
 
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {

@@ -78,6 +78,7 @@ public:
 	}
 	void set_all() {
 		cudaMemcpyAsync(v_gpu_old[0], v_raw[0], MEM_LEN * size, cudaMemcpyHostToDevice, stream);
+		cudaMemcpyAsync(v_gpu_new[0], v_raw[0], MEM_LEN * size, cudaMemcpyHostToDevice, stream);
 		validity = true;
 	}
 	void destroy() {
@@ -88,21 +89,18 @@ public:
 	}
 };
 
-constexpr int NVECS = 6;
+constexpr int NVECS = 9;
 #define POS 0
 #define VEL 3
+#define ENRG 6
+#define DEDV 7
+#define VIRI 8
 vec<NVECS> vec_all;
 double** pos = &vec_all.v_raw[POS];
 double** vel = &vec_all.v_raw[VEL];
-
-constexpr int NSCALS = 3;
-#define ENRG 0
-#define DEDV 1
-#define VIRI 2
-vec<NSCALS> scal_all;
-double*& enrg = scal_all.v_raw[ENRG];
-double*& dedv = scal_all.v_raw[DEDV];
-double*& viri = scal_all.v_raw[VIRI];
+double*& enrg = vec_all.v_raw[ENRG];
+double*& dedv = vec_all.v_raw[DEDV];
+double*& viri = vec_all.v_raw[VIRI];
 
 static properties* props;
 void alloc() {
@@ -110,8 +108,7 @@ void alloc() {
 	cudaStreamCreate(&stream);
 
 	vec_all.init();
-	scal_all.init();
-
+	
 	cudaMalloc(&props, ELEMS_NUM * sizeof(properties));
 	properties* _props = (properties*)malloc(ELEMS_NUM * sizeof(properties));
 	for(int i = 0; i < ELEMS_NUM; i++) _props[i].set_properties(ELEMS_TYPES[i]);
@@ -122,14 +119,12 @@ void alloc() {
 void dealloc() {
 	cudaStreamDestroy(stream);
 	vec_all.destroy();
-	scal_all.destroy();
 	cudaFree(props);
 	cudaDeviceReset();
 }
 
 void pull_values() {
 	vec_all.get_all();
-	scal_all.get_all();
 }
 
 void push_values() {
@@ -243,8 +238,7 @@ __device__ float3 to_f3(double3 a) {
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
 		                                                                        \
 		rr_ss[i] = (R0 * R0) / (SIZE * SIZE);                                   \
-		/*rr_ss[i] = 0;*/                                                       \
-		                                                                        \
+                                                                                \
         __COEFFS__                                                              \
 	}                                                                           \
 	                                                                            \
@@ -304,7 +298,7 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float s
 
 constexpr float
 	c1 = (float)(SIZE / R0) * 1.5f,
-	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * 0.5f;
+	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * .5f;
 
 __device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss, double& dedv_lj, double& dedv_em, float rr_ss) {
 	float3 d = p - _p;
@@ -399,9 +393,9 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	vec_all.set(ind, v, VEL);
 }
 
-constexpr double dedv_coeff = - 1 / (3 * V);
+constexpr double dedv_coeff = -1 / (3 * V);
 __global__
-void energy_gpu (const vec<NVECS> vec_all, const vec<NSCALS> scal_all, properties* props) {
+void energy_gpu (const vec<NVECS> vec_all, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
 	double dedv_lj = 0;
@@ -424,17 +418,17 @@ void energy_gpu (const vec<NVECS> vec_all, const vec<NSCALS> scal_all, propertie
 		dedv_em += dedv_coeff * em_coeff[props_ind] * ddedv_em;
 	);
 
-	scal_all.set_single(ind, e_em + e_lj, ENRG);
-	scal_all.set_single(ind, dedv_lj + dedv_em, DEDV);
+	vec_all.set_single(ind, e_em + e_lj, ENRG);
+	vec_all.set_single(ind, dedv_lj + dedv_em, DEDV);
 }
 
-__global__ void viri_gpu(const vec<NVECS> vec_all, const vec<NSCALS> scal_all, properties* props) {
+__global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 	double v_lj = 0;
 	double v_em = 0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 48. * epsilon * SIZE * SIZE / sigma / sigma / (3 * V) / 2;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / (3 * V) * _P0.Q * _P.Q / 2;
+		lj_coeff[i] = 48. * epsilon * SIZE * SIZE / sigma / sigma / (3. * V) / 2.;
+		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / (3. * V) * _P0.Q * _P.Q / 2.;
 	,
 		double dv_lj = 0;
 		double dv_em = 0;
@@ -445,7 +439,7 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, const vec<NSCALS> scal_all, p
 		v_em += em_coeff[props_ind] * dv_em;
 	)
 
-	scal_all.set_single(ind, v_lj + v_em, VIRI);
+	vec_all.set_single(ind, v_lj + v_em, VIRI);
 }
 
 void euler_steps(int steps) {
@@ -455,23 +449,21 @@ void euler_steps(int steps) {
 	#endif
 		vec_all.gpu_copy();
 	}
+	
+	#ifndef __INTELLISENSE__
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
+	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
+	#endif
+	
 	vec_all.invalidate();
-
-#ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, scal_all, props);
-	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, scal_all, props);
-#endif
-	scal_all.invalidate();
-
 }
 
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3 >>> (vec_all, scal_all, props);
-	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, scal_all, props);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
+	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
 #endif
-	scal_all.invalidate();
-	scal_all.get_all();
+	vec_all.invalidate();
 }
 
 bool selectDevice(int deviceIndex) {
