@@ -89,7 +89,7 @@ void flops_output(long long t0) {
 	cout << "dt = " << dt / 1000000 << " ms (" << SKIPS * AMOUNT * AMOUNT * flop() / dt << " GFlops)" << endl;
 }
 
-void output(vector<compute*>& to_cout, vector<compute*>& to_csv, string filename) {
+void output(vector<compute*> to_cout, vector<compute*> to_csv, string filename) {
 	static ofstream out(filename);
 	out.precision(15);
 	for(int i = 0; i < to_csv.size(); i++) {
@@ -132,7 +132,7 @@ int main(int argc, char* argv[], char* envp[]) {
 		window_show();
 	#endif
 
-		static vector<compute*> to_cout = { 
+		static vector<compute*> to_cout = {
 			new total_energy(),
 			new temperature(),
 			new total_pressure(),
@@ -156,7 +156,7 @@ int main(int argc, char* argv[], char* envp[]) {
 		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
 		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_1280_10bar.csv");
 
-		pull_values();		
+		pull_values();
 		flops_output(t0);
 		print_err(false);
 	}
