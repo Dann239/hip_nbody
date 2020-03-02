@@ -57,14 +57,14 @@ double temperature_pressure::calculate() {
 	return value = N * K * temperature().calculate();
 }
 
-virial_pressure::virial_pressure() : total(viri), compute("Pv = ", 1000, " mPa; ", 5) {}
+virial_pressure::virial_pressure() : total(viri), compute("Pv = ", 1, " Pa; ", 5) {}
 
 total_pressure::total_pressure() : compute("P = ", 1, " Pa; ") {}
 double total_pressure::calculate() {
 	return value = temperature_pressure().calculate() + virial_pressure().calculate();
 }
 
-tvm_du::tvm_du() : total(tvm), compute("dUtvm/dV = ", -1. / (V * 3. * ALPHA) * 1000, " mPa; ", 5) {}
+tvm_du::tvm_du() : total(tvm), compute("dUtvm/dV = ", -1. / (V * 3. * ALPHA) * 1, " Pa; ", 5) {}
 
 elapsed_time::elapsed_time() : compute("t = ", 1e9, " ns; ") {}
 double elapsed_time::calculate() {
