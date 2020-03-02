@@ -105,9 +105,10 @@ void output(vector<compute*> to_cout, vector<compute*> to_csv, string filename) 
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
+#ifndef __HCC__
 	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
 		return -1;
-
+#endif
 	print_chars();
 
 	alloc();
@@ -154,7 +155,7 @@ int main(int argc, char* argv[], char* envp[]) {
 			total_time = 0;
 
 		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
-		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_5120_10bar.csv");
+		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_15360_10bar.csv");
 
 		pull_values();
 		flops_output(t0);
