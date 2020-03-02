@@ -7,6 +7,8 @@ extern double*& enrg;
 extern double*& viri;
 extern double*& tvm;
 
+extern double total_time;
+
 void alloc();
 void dealloc();
 

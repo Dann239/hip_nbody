@@ -1,6 +1,7 @@
 #include "kernel.h"
 #include "window.h"
 #include "properties.h"
+#include "computes.h"
 
 #include <vector>
 #include <iostream>
@@ -11,22 +12,6 @@
 #include <csignal>
 #include <string>
 using namespace std;
-
-bool interrupt = false;
-void interrupter(int n) {
-	interrupt = true;
-}
-
-constexpr long long flop() {
-	int res = 14;
-	#ifdef ENABLE_LJ
-		res += 13;
-	#endif
-	#ifdef ENABLE_EM
-		res += 9;
-	#endif
-	return res;
-}
 
 void randomize() {
 	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
@@ -55,17 +40,17 @@ void randomize() {
 	push_values();
 }
 
-void dump() {
+void dump(string filename) {
 	pull_values();
-	ofstream out("data/dump.dat", ios::binary);
+	ofstream out(filename, ios::binary);
 	for (int i = 0; i < 3; i++) {
 		out.write((char*)pos[i], AMOUNT * sizeof(double));
 		out.write((char*)vel[i], AMOUNT * sizeof(double));
 	}
 	out.close();
 }
-void load() {
-	ifstream in("data/dump.dat", ios::binary);
+void load(string filename) {
+	ifstream in(filename, ios::binary);
 	if (!in.fail()) {
 		for (int i = 0; i < 3; i++) {
 			in.read((char*)pos[i], AMOUNT * sizeof(double));
@@ -84,70 +69,41 @@ double deflect(double& p) {
 	return p;
 }
 
+long long flop() {
+	int res = 14;
+#ifdef ENABLE_LJ
+	res += 13;
+#endif
+#ifdef ENABLE_EM
+	res += 9;
+#endif
+	return res;
+}
+
 long long ntime() {
 	return chrono::duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count();
 }
 
-double elapsed_time = 0;
-
-double potential_energy = 0;
-double kinetic_energy_i = 0;
-double kinetic_energy_e = 0;
-double kinetic_energy = 0;
-double virial = 0;
-double tvm_du = 0;
-void energy_calc() {
-	potential_energy = 0;
-	kinetic_energy_i = 0;
-	kinetic_energy_e = 0;
-	virial = 0;
-	tvm_du = 0;
-	int amount_i = 0, amount_e = 0;
-	for (int i = 0; i < AMOUNT; i++) {
-		potential_energy += enrg[i] / AMOUNT;
-
-		double dk = get_properties(i).M * (vel[X][i] * vel[X][i] + vel[Y][i] * vel[Y][i] + vel[Z][i] * vel[Z][i]) / 2;
-		if(get_elem_type(i) == ELECTRON) {
-			kinetic_energy_e += dk;
-			amount_e++;
-		}
-		else {
-			kinetic_energy_i += dk;
-			amount_i++;
-		}
-		virial += viri[i];
-		tvm_du += tvm[i];
-	}
-	kinetic_energy = (kinetic_energy_e + kinetic_energy_i) / AMOUNT;
-	if(amount_e) kinetic_energy_e /= amount_e;
-	if(amount_i) kinetic_energy_i /= amount_i;
+void flops_output(long long t0) {
+	long long dt = (long long)ntime() - t0;
+	cout << "dt = " << dt / 1000000 << " ms (" << SKIPS * AMOUNT * AMOUNT * flop() / dt << " GFlops)" << endl;
 }
 
-void datadump() {
-	static ofstream out("data/datadump.csv");
+void output(vector<compute*>& to_cout, vector<compute*>& to_csv, string filename) {
+	static ofstream out(filename);
 	out.precision(15);
-
-	out << elapsed_time << ','; //t
-	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
-	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
-	out << (2. / 3. * N * kinetic_energy) << ','; //p_t
-	out << virial << ','; //p_v
-	out << tvm_du << ','; //dU
-	out << (potential_energy + kinetic_energy) / E; //E
-	out << endl;
+	for(int i = 0; i < to_csv.size(); i++) {
+		to_csv[i]->calculate();
+		to_csv[i]->output_csv(out, i == to_csv.size() - 1 ? "\n" : ",");
+	}
+	for(int i = 0; i < to_cout.size(); i++) {
+		to_cout[i]->calculate();
+		to_cout[i]->output_cout();
+	}
 }
 
-void output(long long t0) {
-	cout.precision(6);
-	cout << fixed << "E = " << ((potential_energy + kinetic_energy) / E * 1e3) << " meV; ";
-	cout.precision(3);
-	cout << fixed << "T = " << (2. / 3. * kinetic_energy_i / K) << " K; ";
-	cout << fixed << "p_t = " << (2. / 3. * N * kinetic_energy) * 1000 << " mPa; ";
-	cout << fixed << "p_v = " << virial * 1000 << " mPa; ";
-	cout << fixed << "p_tvm = " << - tvm_du / (V * 3. * ALPHA) * 1000 << " mPa; ";
-	cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
-}
 
+bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
 	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
 		return -1;
@@ -156,14 +112,14 @@ int main(int argc, char* argv[], char* envp[]) {
 
 	alloc();
 	randomize();
-	load();
+	//load("data/dump.dat");
 
 	window_init();
 
 	force_energy_calc();
 	pull_values();
 
-	signal(SIGINT, interrupter);
+	signal(SIGINT, [](int sig) { interrupt = true; });
 
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
 		long long t0 = ntime();
@@ -171,20 +127,42 @@ int main(int argc, char* argv[], char* envp[]) {
 
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
-		for (int i = 0; i < AMOUNT; i++)
-			window_draw_point(deflect(pos[X][i]) * OUTPUT_COEFF, deflect(pos[Y][i]) * OUTPUT_COEFF, get_properties(i).COLOUR);
+		for (int j = 0; j < AMOUNT; j++)
+			window_draw_point(deflect(pos[X][j]) * OUTPUT_COEFF, deflect(pos[Y][j]) * OUTPUT_COEFF, get_properties(j).COLOUR);
 		window_show();
 	#endif
-		energy_calc();
-		datadump();
-		pull_values();
-		elapsed_time += SKIPS * TIME_STEP;
-		output(t0);
+
+		static vector<compute*> to_cout = { 
+			new total_energy(),
+			new temperature(),
+			new total_pressure(),
+			new virial_pressure() };
+
+		static vector<compute*> to_csv = {
+			new elapsed_time(),
+			new potential_energy(),
+			new kinetic_energy(),
+			new total_energy(),
+			new temperature(),
+			new temperature_pressure(),
+			new virial_pressure(),
+			new total_pressure(),
+			new tvm_du()
+		};
+
+		if (i <= NSTEPS / 2)
+			total_time = 0;
+
+		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
+		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_1280_10bar.csv");
+
+		pull_values();		
+		flops_output(t0);
 		print_err(false);
 	}
 	window_delete();
 
-	dump();
+	//dump("data/dump.dat");
 	dealloc();
 	return 0;
 }

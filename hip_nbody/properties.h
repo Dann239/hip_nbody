@@ -1,7 +1,7 @@
 #pragma once
 
-#define ENABLE_EM
-//#define ENABLE_LJ
+//#define ENABLE_EM
+#define ENABLE_LJ
 #define ENABLE_PB
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
@@ -49,8 +49,8 @@ constexpr double EPSILON0 = 8.85418781762e-12;
 constexpr double MU0 = 4e-7 * PI;
 constexpr double E = 1.60217662e-19;
 
-constexpr double T = 5000;
-constexpr double P = 1;
+constexpr double T = 500;
+constexpr double P = 10 * 1e5;
 constexpr double N = P / (K * T);
 
 constexpr double V = AMOUNT / N;
@@ -58,20 +58,20 @@ constexpr double SIZE = _cbrt(V);
 
 constexpr double ALPHA = 1e-5;
 constexpr double E_EXT = 0;
-constexpr double TIME_STEP = 5e-16;
+constexpr double TIME_STEP = 2.5e-16;
 constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
 constexpr double R0 = R_DEBYE * 0.05;
-constexpr int SKIPS = 10;
-constexpr int NSTEPS = -1;
+constexpr int SKIPS = 100;
+constexpr int NSTEPS = 20000;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
-enum XYZ {X = 0, Y, Z};
+enum XYZ {X = 0, Y = 1, Z = 2};
 enum ELEMS {ASTATINE, HELIUM, ELECTRON, PROTON, ERROR};
 
-constexpr int ELEMS_NUM = 2;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 0.49999, 1 };
-constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {PROTON, ELECTRON};
+constexpr int ELEMS_NUM = 1;
+constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 1 };
+constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM};
 
 struct properties {
 	double SIGMA, EPSILON, M, Q;

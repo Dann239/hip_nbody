@@ -295,9 +295,6 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 d, const float ss_ss,
 #endif
 }
 
-constexpr float
-	c1 = (float)(SIZE / R0) * 1.5f,
-	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * .5f;
 
 __device__ void get_e(double& e_lj, double& e_em, float3 d, const float ss_ss, const float rr_ss, const float tvm_coeff) {
 #ifdef ENABLE_PB
@@ -315,6 +312,10 @@ __device__ void get_e(double& e_lj, double& e_em, float3 d, const float ss_ss, c
 #endif
 
 #ifdef ENABLE_EM
+constexpr float
+	c1 = (float)(SIZE / R0) * 1.5f,
+	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * .5f;
+
 	float de_em = 0;
 	if (d2 < rr_ss)
 		de_em = c1 + c2 * d2;
@@ -358,7 +359,7 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	double3 a_em = d3_0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 48. * epsilon * SIZE / sigma / sigma / _P0.M;
+		lj_coeff[i] = 48. * SIZE * epsilon / sigma / sigma / _P0.M;
 		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / SIZE * _P0.Q * _P.Q / _P0.M;
 	,
 		double3 da_lj = d3_0;
@@ -380,7 +381,7 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	vec_all.set(ind, v, VEL);
 }
 
-constexpr float tvm_coeff = (1 + ALPHA) * (1 + ALPHA);
+constexpr float tvm_coeff = (1 + (float)ALPHA) * (1 + (float)ALPHA);
 __global__
 void energy_gpu (const vec<NVECS> vec_all, properties* props) {
 	double e_lj = 0;
@@ -415,7 +416,7 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 	double v_em = 0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
-		lj_coeff[i] = 48. * epsilon * SIZE * SIZE / sigma / sigma / (3. * V) / 2.;
+		lj_coeff[i] = 48. * SIZE * SIZE * epsilon / sigma / sigma / (3. * V) / 2.;
 		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / (3. * V) * _P0.Q * _P.Q / 2.;
 	,
 		double dv_lj = 0;
@@ -430,6 +431,7 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 	vec_all.set_single(ind, v_lj + v_em, VIRI);
 }
 
+double total_time = 0;
 void euler_steps(int steps) {
 	for(int i = 0; i < steps; i++) {
 	#ifndef __INTELLISENSE__
@@ -437,7 +439,7 @@ void euler_steps(int steps) {
 	#endif
 		vec_all.gpu_copy(0, 6);
 	}
-	
+	total_time += TIME_STEP * steps;
 	#ifndef __INTELLISENSE__
 	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
 	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
