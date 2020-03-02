@@ -9,6 +9,7 @@
 #include <math.h>
 #include <chrono>
 #include <csignal>
+#include <string>
 using namespace std;
 
 bool interrupt = false;
@@ -64,7 +65,7 @@ void dump() {
 	out.close();
 }
 void load() {
-	ifstream in("data/dump_relaxed.dat", ios::binary);
+	ifstream in("data/dump.dat", ios::binary);
 	if (!in.fail()) {
 		for (int i = 0; i < 3; i++) {
 			in.read((char*)pos[i], AMOUNT * sizeof(double));
@@ -87,25 +88,22 @@ long long ntime() {
 	return chrono::duration_cast<chrono::nanoseconds>(chrono::system_clock::now().time_since_epoch()).count();
 }
 
+double elapsed_time = 0;
+
 double potential_energy = 0;
-double field_energy = 0;
 double kinetic_energy_i = 0;
 double kinetic_energy_e = 0;
 double kinetic_energy = 0;
-double dedv_pressure = 0;
 double virial = 0;
-double current = 0;
+double tvm_du = 0;
 void energy_calc() {
 	potential_energy = 0;
-	field_energy = 0;
-	dedv_pressure = 0;
 	kinetic_energy_i = 0;
 	kinetic_energy_e = 0;
 	virial = 0;
-	current = 0;
+	tvm_du = 0;
 	int amount_i = 0, amount_e = 0;
 	for (int i = 0; i < AMOUNT; i++) {
-		field_energy -= get_properties(i).Q * pos[X][i] * E_EXT / AMOUNT;
 		potential_energy += enrg[i] / AMOUNT;
 
 		double dk = get_properties(i).M * (vel[X][i] * vel[X][i] + vel[Y][i] * vel[Y][i] + vel[Z][i] * vel[Z][i]) / 2;
@@ -117,9 +115,8 @@ void energy_calc() {
 			kinetic_energy_i += dk;
 			amount_i++;
 		}
-		current += (N * get_properties(i).Q * vel[X][i]) / AMOUNT;
-		dedv_pressure += dedv[i];
 		virial += viri[i];
+		tvm_du += tvm[i];
 	}
 	kinetic_energy = (kinetic_energy_e + kinetic_energy_i) / AMOUNT;
 	if(amount_e) kinetic_energy_e /= amount_e;
@@ -128,23 +125,26 @@ void energy_calc() {
 
 void datadump() {
 	static ofstream out("data/datadump.csv");
-	out.precision(30);
+	out.precision(15);
+
+	out << elapsed_time << ','; //t
 	out << (2. / 3. * kinetic_energy_i / K) << ','; //Ti
 	out << (2. / 3. * kinetic_energy_e / K) << ','; //Te
-	out << current << ','; //j
+	out << (2. / 3. * N * kinetic_energy) << ','; //p_t
 	out << virial << ','; //p_v
-	out << (potential_energy + kinetic_energy + field_energy) / E; //E
+	out << tvm_du << ','; //dU
+	out << (potential_energy + kinetic_energy) / E; //E
 	out << endl;
 }
 
 void output(long long t0) {
 	cout.precision(6);
-	cout << fixed << "E = " << ((potential_energy + kinetic_energy + field_energy) / E * 1e3) << " meV; ";
+	cout << fixed << "E = " << ((potential_energy + kinetic_energy) / E * 1e3) << " meV; ";
 	cout.precision(3);
 	cout << fixed << "T = " << (2. / 3. * kinetic_energy_i / K) << " K; ";
-	cout << fixed << "Te = " << (2. / 3. * kinetic_energy_e / K) << " K; ";
-	cout << fixed << "p_viri = " << virial * 1000 << " mPa; ";
-	cout << fixed << "j = " << current / 1000 << " kA/m2; ";
+	cout << fixed << "p_t = " << (2. / 3. * N * kinetic_energy) * 1000 << " mPa; ";
+	cout << fixed << "p_v = " << virial * 1000 << " mPa; ";
+	cout << fixed << "p_tvm = " << - tvm_du / (V * 3. * ALPHA) * 1000 << " mPa; ";
 	cout << "dt = " << ((long long)ntime() - t0) / 1000000 << " ms (" << (flop() * SKIPS * AMOUNT * AMOUNT) / ((long long)ntime() - t0) << " GFlops)" << endl;
 }
 
@@ -178,6 +178,7 @@ int main(int argc, char* argv[], char* envp[]) {
 		energy_calc();
 		datadump();
 		pull_values();
+		elapsed_time += SKIPS * TIME_STEP;
 		output(t0);
 		print_err(false);
 	}

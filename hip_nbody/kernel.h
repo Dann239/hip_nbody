@@ -4,8 +4,8 @@ extern double** pos;
 extern double** vel;
 
 extern double*& enrg;
-extern double*& dedv;
 extern double*& viri;
+extern double*& tvm;
 
 void alloc();
 void dealloc();

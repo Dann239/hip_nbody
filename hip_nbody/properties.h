@@ -56,11 +56,12 @@ constexpr double N = P / (K * T);
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
+constexpr double ALPHA = 1e-5;
 constexpr double E_EXT = 0;
 constexpr double TIME_STEP = 5e-16;
 constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
 constexpr double R0 = R_DEBYE * 0.05;
-constexpr int SKIPS = 50;
+constexpr int SKIPS = 10;
 constexpr int NSTEPS = -1;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
@@ -83,20 +84,20 @@ struct properties {
 			SIGMA = 0.3405e-9;
 			M = 0.040 / NA;
 			EPSILON = 119.8 * K;
-			Q = E;
+			Q = 0;
 			COLOUR = 0x0000FFFF;
 			break;
 		case HELIUM:
 			SIGMA = 0.263e-9;
 			M = 0.004 / NA;
 			EPSILON = 6.03 * K;
-			Q = -E;
+			Q = 0;
 			COLOUR = 0xFF0000FF;
 			break;
 		case PROTON:
 			SIGMA = 0.37e-9;
 			M = 0.001 / NA;
-			EPSILON = 30 * K;
+			EPSILON = 29.2 * K;
 			Q = E;
 			COLOUR = 0xFF7F00FF;
 			break;

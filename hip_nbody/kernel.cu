@@ -48,8 +48,8 @@ public:
 	__device__ void set_single(int i, double p, int offset) const {
 		v_gpu_new[offset][i] = p;
 	}
-	void gpu_copy() {
-		cudaMemcpyAsync(v_gpu_old[0], v_gpu_new[0], MEM_LEN * size, cudaMemcpyDeviceToDevice, stream);
+	void gpu_copy(int begin = 0, int len = size) {
+		cudaMemcpyAsync(v_gpu_old[begin], v_gpu_new[begin], MEM_LEN * len, cudaMemcpyDeviceToDevice, stream);
 	}
 	void invalidate() {
 		cudaMemcpyAsync(v_cpu[0], v_gpu_new[0], MEM_LEN * size, cudaMemcpyDeviceToHost, stream);
@@ -93,14 +93,14 @@ constexpr int NVECS = 9;
 #define POS 0
 #define VEL 3
 #define ENRG 6
-#define DEDV 7
-#define VIRI 8
+#define VIRI 7
+#define TVM 8
 vec<NVECS> vec_all;
 double** pos = &vec_all.v_raw[POS];
 double** vel = &vec_all.v_raw[VEL];
 double*& enrg = vec_all.v_raw[ENRG];
-double*& dedv = vec_all.v_raw[DEDV];
 double*& viri = vec_all.v_raw[VIRI];
+double*& tvm = vec_all.v_raw[TVM];
 
 static properties* props;
 void alloc() {
@@ -269,8 +269,7 @@ __device__ float3 to_f3(double3 a) {
 	p = SIZE * p;                                                               \
 
 
-__device__ void get_a(double3& a_lj, double3& a_em, float3 p, float3 _p, float ss_ss, float rr_ss) {
-	float3 d = p - _p;
+__device__ void get_a(double3& a_lj, double3& a_em, float3 d, const float ss_ss, const float rr_ss) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
@@ -300,13 +299,12 @@ constexpr float
 	c1 = (float)(SIZE / R0) * 1.5f,
 	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * .5f;
 
-__device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _p, float ss_ss, double& dedv_lj, double& dedv_em, float rr_ss) {
-	float3 d = p - _p;
+__device__ void get_e(double& e_lj, double& e_em, float3 d, const float ss_ss, const float rr_ss, const float tvm_coeff) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
 
-	float d2 = hypotf2(d);
+	float d2 = hypotf2(d) * tvm_coeff;
 
 #ifdef ENABLE_LJ
 	float r2 = d2 * ss_ss,
@@ -314,30 +312,19 @@ __device__ void get_e(double& e_lj, double& e_em, const float3 p, const float3 _
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
 	e_lj += (r_6 - 1.f) * r_6;
-	static_assert(0, "dedv_lj not implemented");
 #endif
 
 #ifdef ENABLE_EM
-	float e_em_const = 0.f;
-	float e_em_poly = 0.f;
-	float e_em_coeff = -1.f;
-
-	if (d2 < rr_ss) {
-		e_em_const = c1;
-		e_em_poly = c2 * d2;
-		e_em_coeff = 2.f;
-	}
+	float de_em = 0;
+	if (d2 < rr_ss)
+		de_em = c1 + c2 * d2;
 	else
-		e_em_poly = rsqrtf(d2);
-
-	e_em += e_em_const + e_em_poly;
-	dedv_em += e_em_poly * e_em_coeff;
-
+		de_em = rsqrtf(d2);
+	e_em += de_em;
 #endif
 }
 
-__device__ void get_viri(double& v_lj, double& v_em, float3 p, float3 _p, float ss_ss, float rr_ss) {
-	float3 d = p - _p;
+__device__ void get_viri(double& v_lj, double& v_em, float3 d, const float ss_ss, const float rr_ss) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
@@ -377,7 +364,7 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 		double3 da_lj = d3_0;
 		double3 da_em = d3_0;
 	,
-		get_a(da_lj, da_em, p_f, _p, ss_ss[props_ind], rr_ss[props_ind]);
+		get_a(da_lj, da_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind]);
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
 		a_em += em_coeff[props_ind] * da_em;
@@ -393,13 +380,13 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	vec_all.set(ind, v, VEL);
 }
 
-constexpr double dedv_coeff = -1 / (3 * V);
+constexpr float tvm_coeff = (1 + ALPHA) * (1 + ALPHA);
 __global__
 void energy_gpu (const vec<NVECS> vec_all, properties* props) {
 	double e_lj = 0;
 	double e_em = 0;
-	double dedv_lj = 0;
-	double dedv_em = 0;
+	double ea_lj = 0;
+	double ea_em = 0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 2. * epsilon;
@@ -407,19 +394,20 @@ void energy_gpu (const vec<NVECS> vec_all, properties* props) {
 	,
 		double de_lj = 0;
 		double de_em = 0;
-		double ddedv_lj = 0;
-		double ddedv_em = 0;
+		double dea_lj = 0;
+		double dea_em = 0;
 	,
-		get_e(de_lj, de_em, p_f, _p, ss_ss[props_ind], ddedv_lj, ddedv_em, rr_ss[props_ind]);
+		get_e(de_lj, de_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind], 1.f);
+		get_e(dea_lj, dea_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind], tvm_coeff);
 	,
 		e_lj += lj_coeff[props_ind] * de_lj;
 		e_em += em_coeff[props_ind] * de_em;
-		dedv_lj += dedv_coeff * lj_coeff[props_ind] * ddedv_lj;
-		dedv_em += dedv_coeff * em_coeff[props_ind] * ddedv_em;
+		ea_lj += lj_coeff[props_ind] * (dea_lj - de_lj);
+		ea_em += em_coeff[props_ind] * (dea_em - de_em);
 	);
 
 	vec_all.set_single(ind, e_em + e_lj, ENRG);
-	vec_all.set_single(ind, dedv_lj + dedv_em, DEDV);
+	vec_all.set_single(ind, ea_lj + ea_em, TVM);
 }
 
 __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
@@ -433,7 +421,7 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 		double dv_lj = 0;
 		double dv_em = 0;
 	,
-		get_viri(dv_lj, dv_em, p_f, _p, ss_ss[props_ind], rr_ss[props_ind]);
+		get_viri(dv_lj, dv_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind]);
 	,
 		v_lj += lj_coeff[props_ind] * dv_lj;
 		v_em += em_coeff[props_ind] * dv_em;
@@ -447,7 +435,7 @@ void euler_steps(int steps) {
 	#ifndef __INTELLISENSE__
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
 	#endif
-		vec_all.gpu_copy();
+		vec_all.gpu_copy(0, 6);
 	}
 	
 	#ifndef __INTELLISENSE__
