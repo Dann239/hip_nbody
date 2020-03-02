@@ -90,11 +90,13 @@ void flops_output(long long t0) {
 }
 
 void output(vector<compute*> to_cout, vector<compute*> to_csv, string filename) {
-	static ofstream out(filename);
-	out.precision(15);
-	for(int i = 0; i < to_csv.size(); i++) {
-		to_csv[i]->calculate();
-		to_csv[i]->output_csv(out, i == to_csv.size() - 1 ? "\n" : ",");
+	if (to_csv.size()) {
+		static ofstream out(filename);
+		out.precision(15);
+		for (int i = 0; i < to_csv.size(); i++) {
+			to_csv[i]->calculate();
+			to_csv[i]->output_csv(out, i == to_csv.size() - 1 ? "\n" : ",");
+		}
 	}
 	for(int i = 0; i < to_cout.size(); i++) {
 		to_cout[i]->calculate();
@@ -155,7 +157,8 @@ int main(int argc, char* argv[], char* envp[]) {
 			total_time = 0;
 
 		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
-		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_15360_10bar.csv");
+		static string output_filename = "data/datadump_" + to_string(AMOUNT) + "_" + to_string((int)(P / 1e5)) + "bar.csv";
+		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, output_filename);
 
 		pull_values();
 		flops_output(t0);

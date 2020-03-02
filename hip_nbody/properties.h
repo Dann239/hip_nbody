@@ -57,7 +57,6 @@ constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
 constexpr double ALPHA = 1e-5;
-constexpr double E_EXT = 0;
 constexpr double TIME_STEP = 2.5e-16;
 constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
 constexpr double R0 = R_DEBYE * 0.05;
