@@ -86,7 +86,7 @@ long long ntime() {
 
 void flops_output(long long t0) {
 	long long dt = (long long)ntime() - t0;
-	cout << "dt = " << dt / 1000000 << " ms (" << SKIPS * AMOUNT * AMOUNT * flop() / dt << " GFlops)" << endl;
+	cout << "dt = " << dt / 1000000 << " ms (" << flop() * SKIPS * AMOUNT * AMOUNT / dt << " GFlops)" << endl;
 }
 
 void output(vector<compute*> to_cout, vector<compute*> to_csv, string filename) {
@@ -154,7 +154,7 @@ int main(int argc, char* argv[], char* envp[]) {
 			total_time = 0;
 
 		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
-		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_1280_10bar.csv");
+		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, "data/datadump_5120_10bar.csv");
 
 		pull_values();
 		flops_output(t0);
