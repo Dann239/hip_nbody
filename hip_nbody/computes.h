@@ -12,7 +12,7 @@ public:
 	double value = 0;
 	virtual double calculate() = 0;
 	virtual void output_cout();
-	virtual void output_csv(std::ofstream& stream, std::string ending) final;
+	virtual void output_csv(std::ofstream& stream, std::string ending);
 };
 
 class average : public virtual compute {
@@ -80,4 +80,10 @@ class elapsed_time : public compute {
 public:
 	elapsed_time();
 	double calculate() override;
+};
+
+class complete_state : public compute {
+public:
+	double calculate() override;
+	void output_csv(std::ofstream& stream, std::string ending) override;
 };

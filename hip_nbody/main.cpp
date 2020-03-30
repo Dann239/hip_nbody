@@ -61,7 +61,7 @@ void load(string filename) {
 	in.close();
 }
 
-double deflect(double& p) {
+double deflect(double p) {
 	if (p < 0)
 		p += (trunc((-p) / SIZE) + 1) * SIZE;
 	if (p > SIZE)
@@ -89,21 +89,21 @@ void flops_output(long long t0) {
 	cout << "dt = " << dt / 1000000 << " ms (" << flop() * SKIPS * AMOUNT * AMOUNT / dt << " GFlops)" << endl;
 }
 
-void output(vector<compute*> to_cout, vector<compute*> to_csv, string filename) {
+void output_csv(const vector<compute*>& to_csv, ofstream& out) {
 	if (to_csv.size()) {
-		static ofstream out(filename);
 		out.precision(15);
 		for (int i = 0; i < to_csv.size(); i++) {
 			to_csv[i]->calculate();
 			to_csv[i]->output_csv(out, i == to_csv.size() - 1 ? "\n" : ",");
 		}
 	}
+}
+void output_cout(const vector<compute*>& to_cout) {
 	for(int i = 0; i < to_cout.size(); i++) {
 		to_cout[i]->calculate();
 		to_cout[i]->output_cout();
 	}
 }
-
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
@@ -115,7 +115,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
 	alloc();
 	randomize();
-	//load("data/dump.dat");
+	load("data/dump.dat");
 
 	window_init();
 
@@ -135,31 +135,22 @@ int main(int argc, char* argv[], char* envp[]) {
 		window_show();
 	#endif
 
+		
+		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
+
 		static vector<compute*> to_cout = {
 			new total_energy(),
 			new temperature(),
 			new total_pressure(),
 			new virial_pressure() };
-
+		output_cout(to_cout);
+		static string output_filename = OUTPUT_FILENAME;
+		static ofstream out_csv(output_filename);
 		static vector<compute*> to_csv = {
-			new elapsed_time(),
-			new potential_energy(),
-			new kinetic_energy(),
-			new total_energy(),
-			new temperature(),
-			new temperature_pressure(),
-			new virial_pressure(),
-			new total_pressure(),
-			new tvm_du()
+			new complete_state()
 		};
-
-		if (i <= NSTEPS / 2)
-			total_time = 0;
-
-		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
-		static string output_filename = "data/datadump_" + to_string(AMOUNT) + "_" + to_string((int)(P / 1e5)) + "bar.csv";
-		output(to_cout, i < NSTEPS / 2 ? vector<compute*>(0) : to_csv, output_filename);
-
+		output_csv(to_csv, out_csv);
+		
 		pull_values();
 		flops_output(t0);
 		print_err(false);

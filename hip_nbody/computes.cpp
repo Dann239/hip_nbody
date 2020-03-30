@@ -70,3 +70,15 @@ elapsed_time::elapsed_time() : compute("t = ", 1e9, " ns; ") {}
 double elapsed_time::calculate() {
 	return value = total_time;
 }
+
+double complete_state::calculate() {}
+void complete_state::output_csv(std::ofstream& stream, std::string ending) {
+	stream << AMOUNT << '\n' << elapsed_time().calculate() << '\n';
+	for(int i = 0; i < AMOUNT; i++) {
+		for(int j = 0; j < 3; j++)
+			stream << pos[j][i] << ' ';
+		for(int j = 0; j < 3; j++)
+			stream << vel[j][i] << ' ';
+		stream << '\n';
+	}
+}
