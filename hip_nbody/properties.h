@@ -4,7 +4,7 @@
 #define ENABLE_PB
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 15; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 16; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr int LATTICE_STEP_COUNT = 8; 

@@ -13,6 +13,42 @@
 #include <string>
 using namespace std;
 
+double uniform_rand() {
+	return (double)rand() / RAND_MAX;
+}
+double maxwell(double v, double T, double m) {
+	return sqrt(m / (2*PI*T)) * exp(-m*v*v / (2*T));
+}
+double inv_maxwell(double p, double T, double m) {
+	return sqrt(2*T*log(sqrt(m / (2*PI*T)) / p) / m);
+}
+double get_maxwell_speed(double T, double m = 1) {
+	double basement = 1e-20;
+	double floor_size = 0.0001;
+	double roof = maxwell(0, T, m);
+
+	vector<double> ziggurat;
+	double next_floor = basement;
+	do {
+		ziggurat.push_back(next_floor);
+		next_floor += inv_maxwell(ziggurat.back(), T, m) / floor_size;
+	} while(next_floor < roof);
+	ziggurat.push_back(roof);
+	
+	double floor = rand() % (ziggurat.size() - 1);
+	double vel_max = inv_maxwell(ziggurat[floor], T, m);
+	double vel_next = inv_maxwell(ziggurat[floor + 1], T, m);
+
+	double vel_new;
+	do {
+		vel_new = uniform_rand() * vel_max;
+	} while(vel_new > vel_next && ziggurat[floor] + uniform_rand() * (ziggurat[floor+1] - ziggurat[floor]) > maxwell(vel_new, T, m));
+
+	if(rand() & 1)
+		vel_new = -vel_new;
+	return vel_new;
+}
+
 void randomize() {
 	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
 
@@ -29,7 +65,7 @@ void randomize() {
 
 				for (int dim = 0; dim < 3; dim++)
 					for (int num = 0; num < 4; num++)
-						vel[dim][offset + num] = 10;
+						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
 
 				pos[X][offset + 0] = cell_size * i;  
 				pos[Y][offset + 0] = cell_size * j;
@@ -107,6 +143,8 @@ void output_cout(const vector<compute*>& to_cout) {
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
+	//cout << get_maxwell_speed(1) << endl;
+	//return 0;
 #ifndef __HCC__
 	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
 		return -1;
