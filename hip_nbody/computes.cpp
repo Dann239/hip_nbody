@@ -82,3 +82,16 @@ void complete_state::output_csv(std::ofstream& stream, std::string ending) {
 		stream << '\n';
 	}
 }
+
+lindemann::lindemann() : compute("<du2> = ", 1, "; ") {
+	for(int i = 0; i < AMOUNT; i++)
+		for(int j = 0; j < 3; j++)
+			pos_init[j].push_back(pos[j][i]);
+}
+double lindemann::calculate() {
+	double res = 0;
+	for(int i = 0; i < AMOUNT; i++)
+		for(int j = 0; j < 3; j++)
+			res += (pos[j][i] - pos_init[j][i]) * (pos[j][i] - pos_init[j][i]) / AMOUNT / 3;
+	return value = res;
+}

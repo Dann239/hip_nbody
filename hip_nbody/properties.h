@@ -52,8 +52,8 @@ constexpr double SIZE = _cbrt(V);
 
 constexpr double ALPHA = 1e-5;
 constexpr double TIME_STEP = 0.00005;
-constexpr int SKIPS = 100;
-constexpr int NSTEPS = -1;
+constexpr int SKIPS = 1000;
+constexpr int NSTEPS = 20000;
 
 constexpr const char* OUTPUT_FILENAME = "data/datadump.xyz";
 

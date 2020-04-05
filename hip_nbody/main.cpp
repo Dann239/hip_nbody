@@ -49,6 +49,12 @@ double get_maxwell_speed(double T, double m = 1) {
 	return vel_new;
 }
 
+void apply_andersen_thermostat(double T) {
+	int pnum = rand() % AMOUNT;
+	for(int i = 0; i < 3; i++)
+		vel[i][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
+}
+
 void randomize() {
 	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
 
@@ -180,14 +186,28 @@ int main(int argc, char* argv[], char* envp[]) {
 			new total_energy(),
 			new temperature() };
 		output_cout(to_cout);
-		static string output_filename = OUTPUT_FILENAME;
-		static ofstream out_csv(output_filename);
-		static vector<compute*> to_csv = {
+		
+		static string xyz_filename = OUTPUT_FILENAME;
+		static ofstream out_xyz(xyz_filename);
+		static vector<compute*> to_xyz = {
 			new complete_state()
+		};
+		output_csv(to_xyz, out_xyz);
+
+		static string csv_filename = "data/data.csv";
+		static ofstream out_csv(csv_filename);
+		static vector<compute*> to_csv = {
+			new elapsed_time(),
+			new temperature(),
+			new lindemann()
 		};
 		output_csv(to_csv, out_csv);
 		
+		double new_T = temperature().calculate() + 1;
 		pull_values();
+		apply_andersen_thermostat(new_T);
+		push_values();
+
 		flops_output(t0);
 		print_err(false);
 	}

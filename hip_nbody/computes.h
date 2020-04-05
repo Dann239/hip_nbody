@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <string>
+#include <vector>
 
 class compute {
 private:
@@ -70,12 +71,12 @@ public:
 	total_pressure();
 	double calculate() override;
 };
-*/
+
 class tvm_du : public total {
 public:
 	tvm_du();
 };
-
+*/
 class elapsed_time : public compute {
 public:
 	elapsed_time();
@@ -86,4 +87,12 @@ class complete_state : public compute {
 public:
 	double calculate() override;
 	void output_csv(std::ofstream& stream, std::string ending) override;
+};
+
+class lindemann : public compute {
+private:
+	std::vector<double> pos_init[3];
+public:
+	lindemann();
+	double calculate() override;
 };
