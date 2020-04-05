@@ -4,8 +4,10 @@
 #define ENABLE_PB
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 15; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
+
+constexpr int LATTICE_STEP_COUNT = 8; 
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
@@ -91,3 +93,5 @@ struct properties {
 
 properties get_properties(int num);
 ELEMS get_elem_type(int num);
+
+static_assert(1. / _cbrt(N / 4.) == SIZE / LATTICE_STEP_COUNT, "You seem to be retarded");

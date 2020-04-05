@@ -71,7 +71,7 @@ double elapsed_time::calculate() {
 	return value = total_time;
 }
 
-double complete_state::calculate() {}
+double complete_state::calculate() { return 0; }
 void complete_state::output_csv(std::ofstream& stream, std::string ending) {
 	stream << AMOUNT << '\n' << elapsed_time().calculate() << '\n';
 	for(int i = 0; i < AMOUNT; i++) {

@@ -14,28 +14,31 @@
 using namespace std;
 
 void randomize() {
-	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
-	static bool grid[grid_size][grid_size][grid_size];
-	for (int i = 0; i < grid_size; i++)
-		for (int j = 0; j < grid_size; j++)
-			for (int k = 0; k < grid_size; k++)
-				grid[i][j][k] = false;
+	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
 
-	for (int i = 0; i < AMOUNT; i++) {
-		int grid_pos[3];
-		for (int j = 0; j < 3; j++) {
-			grid_pos[j] = rand() % grid_size;
-			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * _sqrt(3 * T / get_properties(i).M);
-		}
+	constexpr double a[3][3] = {
+		{0, cell_size / 2., cell_size / 2.},
+		{cell_size / 2., 0, cell_size / 2.},
+		{cell_size / 2., cell_size / 2., 0}
+	};
 
-		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
-			i--;
-			continue;
-		}
+	for (int i = 0; i < LATTICE_STEP_COUNT; i++)
+		for (int j = 0; j < LATTICE_STEP_COUNT; j++)
+			for (int k = 0; k < LATTICE_STEP_COUNT; k++) {
+				int offset = 4 * (k + j * LATTICE_STEP_COUNT + i * LATTICE_STEP_COUNT * LATTICE_STEP_COUNT);
 
-		grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]] = true;
-	}
+				for (int dim = 0; dim < 3; dim++)
+					for (int num = 0; num < 4; num++)
+						vel[dim][offset + num] = 10;
+
+				pos[X][offset + 0] = cell_size * i;  
+				pos[Y][offset + 0] = cell_size * j;
+				pos[Z][offset + 0] = cell_size * k;
+
+				for (int dim = 0; dim < 3; dim++)
+					for (int num = 0; num < 3; num++)
+							pos[dim][offset + num + 1] = pos[dim][offset + 0] + a[num][dim];
+			}
 
 	push_values();
 }
