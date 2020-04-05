@@ -1,11 +1,10 @@
 #pragma once
 
-//#define ENABLE_EM
 #define ENABLE_LJ
 #define ENABLE_PB
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 1; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -42,75 +41,44 @@ constexpr double _sqrt(double a) {
 }
 
 constexpr double PI = 3.14159265359;
-constexpr double K = 1.380649e-23;
-constexpr double NA = 6.022141e23;
-constexpr double R = K * NA;
-constexpr double EPSILON0 = 8.85418781762e-12;
-constexpr double MU0 = 4e-7 * PI;
-constexpr double E = 1.60217662e-19;
 
-constexpr double T = 500;
-constexpr double P = 200 * 1e5;
-constexpr double N = P / (K * T);
+constexpr double T = 1;
+constexpr double N = 1;
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
 constexpr double ALPHA = 1e-5;
-constexpr double TIME_STEP = 2.5e-17;
-constexpr double R_DEBYE = _sqrt(4 * EPSILON0 * K * T / (E * E * N));
-constexpr double R0 = R_DEBYE * 0.05;
-constexpr int SKIPS = 2;
-constexpr int NSTEPS = 1000;
+constexpr double TIME_STEP = 0.00005;
+constexpr int SKIPS = 100;
+constexpr int NSTEPS = -1;
 
-constexpr const char* OUTPUT_FILENAME = "data/datadump2.xyz";
+constexpr const char* OUTPUT_FILENAME = "data/datadump.xyz";
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y = 1, Z = 2};
-enum ELEMS {ASTATINE, HELIUM, ELECTRON, PROTON, ERROR};
+enum ELEMS {LJ_PARTICLE, ERROR};
 
 constexpr int ELEMS_NUM = 1;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 1 };
-constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {HELIUM};
+constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {LJ_PARTICLE};
 
 struct properties {
-	double SIGMA, EPSILON, M, Q;
+	double SIGMA, EPSILON, M;
 	unsigned int COLOUR;
 	double divisions[ELEMS_NUM + 1];
 	void set_properties(ELEMS type) {
 		switch (type)
 		{
-		case ASTATINE:
-			SIGMA = 0.3405e-9;
-			M = 0.040 / NA;
-			EPSILON = 119.8 * K;
-			Q = 0;
-			COLOUR = 0x0000FFFF;
-			break;
-		case HELIUM:
-			SIGMA = 0.263e-9;
-			M = 0.004 / NA;
-			EPSILON = 6.03 * K;
-			Q = 0;
+		case LJ_PARTICLE:
+			SIGMA = 1;
+			M = 1;
+			EPSILON = 1;
 			COLOUR = 0xFF0000FF;
 			break;
-		case PROTON:
-			SIGMA = 0.37e-9;
-			M = 0.001 / NA;
-			EPSILON = 29.2 * K;
-			Q = E;
-			COLOUR = 0xFF7F00FF;
-			break;
-		case ELECTRON:
-			SIGMA = 1e-9;
-			M = 9.1e-31;
-			EPSILON = 0;
-			Q = -E;
-			COLOUR = 0xFFFFFFFF;
-			break;
 		default:
-			SIGMA = EPSILON = M = Q = -1;
+			SIGMA = EPSILON = M = -1;
 			COLOUR = 0x777777FF;
 		}
 		for(int i = 0; i <= ELEMS_NUM; i++)

@@ -29,9 +29,9 @@ double total::calculate() {
 	return value;
 }
 
-potential_energy::potential_energy() : average(enrg), compute("Ep = ", 1000 / E, " meV; ") {}
+potential_energy::potential_energy() : average(enrg), compute("Ep = ", 1, "; ") {}
 
-kinetic_energy::kinetic_energy() : compute("Ek = ", 1000 / E, " meV; ") {}
+kinetic_energy::kinetic_energy() : compute("Ek = ", 1, "; ") {}
 double kinetic_energy::calculate() {
 	value = 0;
 	for (int i = 0; i < AMOUNT; i++)
@@ -42,16 +42,16 @@ double kinetic_energy::calculate() {
 	return value;
 }
 
-total_energy::total_energy() : compute("E = ", 1000 / E, " meV; ", 6) {}
+total_energy::total_energy() : compute("E = ", 1, "; ", 6) {}
 double total_energy::calculate() {
 	return value = kinetic_energy().calculate() + potential_energy().calculate();
 }
 
-temperature::temperature() : compute("T = ", 1, " K; ") {}
+temperature::temperature() : compute("T = ", 1, "; ") {}
 double temperature::calculate() {
-	return value = (2. / 3. / K) * kinetic_energy().calculate();
+	return value = (2. / 3.) * kinetic_energy().calculate();
 }
-
+/*
 temperature_pressure::temperature_pressure() : compute("Pt = ", 1, " Pa; ") {}
 double temperature_pressure::calculate() {
 	return value = N * K * temperature().calculate();
@@ -65,8 +65,8 @@ double total_pressure::calculate() {
 }
 
 tvm_du::tvm_du() : total(tvm), compute("dUtvm/dV = ", -1. / (V * 3. * ALPHA) * 1, " Pa; ", 5) {}
-
-elapsed_time::elapsed_time() : compute("t = ", 1e9, " ns; ") {}
+*/
+elapsed_time::elapsed_time() : compute("t = ", 1, "; ") {}
 double elapsed_time::calculate() {
 	return value = total_time;
 }

@@ -226,9 +226,7 @@ __device__ float3 to_f3(double3 a) {
     properties _P0 = props[get_elem(bid, props[0])];                            \
                                                                                 \
     double lj_coeff[ELEMS_NUM];                                                 \
-    double em_coeff[ELEMS_NUM];                                                 \
-	float ss_ss[ELEMS_NUM];                                                     \
-	float rr_ss[ELEMS_NUM];                                                     \
+    float ss_ss[ELEMS_NUM];                                                     \
 	                                                                            \
 	for(int i = 0; i < ELEMS_NUM; i++) {                                        \
 		                                                                        \
@@ -237,8 +235,6 @@ __device__ float3 to_f3(double3 a) {
         double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                              \
 		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
 		                                                                        \
-		rr_ss[i] = (R0 * R0) / (SIZE * SIZE);                                   \
-                                                                                \
         __COEFFS__                                                              \
 	}                                                                           \
 	                                                                            \
@@ -269,7 +265,7 @@ __device__ float3 to_f3(double3 a) {
 	p = SIZE * p;                                                               \
 
 
-__device__ void get_a(double3& a_lj, double3& a_em, float3 d, const float ss_ss, const float rr_ss) {
+__device__ void get_a(double3& a_lj, float3 d, const float ss_ss) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
@@ -286,17 +282,10 @@ __device__ void get_a(double3& a_lj, double3& a_em, float3 d, const float ss_ss,
 	a_lj += (_2r_14__r_8 * d);
 #endif
 
-#ifdef ENABLE_EM
-	if (d2 < rr_ss)
-		d2 = rr_ss;
-	float d_1 = rsqrtf(d2);
-	float em_coeff = d_1 * d_1 * d_1;
-	a_em += (em_coeff * d);
-#endif
 }
 
 
-__device__ void get_e(double& e_lj, double& e_em, float3 d, const float ss_ss, const float rr_ss, const float tvm_coeff) {
+__device__ void get_e(double& e_lj, float3 d, const float ss_ss, const float tvm_coeff) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
@@ -311,21 +300,9 @@ __device__ void get_e(double& e_lj, double& e_em, float3 d, const float ss_ss, c
 	e_lj += (r_6 - 1.f) * r_6;
 #endif
 
-#ifdef ENABLE_EM
-constexpr float
-	c1 = (float)(SIZE / R0) * 1.5f,
-	c2 = -(float)((SIZE * SIZE * SIZE) / (R0 * R0 * R0)) * .5f;
-
-	float de_em = 0;
-	if (d2 < rr_ss)
-		de_em = c1 + c2 * d2;
-	else
-		de_em = rsqrtf(d2);
-	e_em += de_em;
-#endif
 }
 
-__device__ void get_viri(double& v_lj, double& v_em, float3 d, const float ss_ss, const float rr_ss) {
+__device__ void get_viri(double& v_lj, float3 d, const float ss_ss) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
@@ -343,35 +320,23 @@ __device__ void get_viri(double& v_lj, double& v_em, float3 d, const float ss_ss
 	v_lj += (da_lj * d);
 #endif
 
-#ifdef ENABLE_EM
-	if (d2 < rr_ss)
-		d2 = rr_ss;
-	float d_1 = rsqrtf(d2);
-	float em_coeff = d_1 * d_1 * d_1;
-	float3 da_em = em_coeff * d;
-	v_em += (da_em * d);
-#endif
 }
 
 __global__
 void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	double3 a_lj = d3_0;
-	double3 a_em = d3_0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * SIZE * epsilon / sigma / sigma / _P0.M;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / SIZE * _P0.Q * _P.Q / _P0.M;
 	,
 		double3 da_lj = d3_0;
-		double3 da_em = d3_0;
 	,
-		get_a(da_lj, da_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind]);
+		get_a(da_lj, p_f - _p, ss_ss[props_ind]);
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
-		a_em += em_coeff[props_ind] * da_em;
 		)
 
-	double3 a = a_lj + a_em;
+	double3 a = a_lj;
 
 	v += TIME_STEP * a;
 	p += TIME_STEP * v;
@@ -384,50 +349,39 @@ constexpr float tvm_coeff = (1 + (float)ALPHA) * (1 + (float)ALPHA);
 __global__
 void energy_gpu (const vec<NVECS> vec_all, properties* props) {
 	double e_lj = 0;
-	double e_em = 0;
 	double ea_lj = 0;
-	double ea_em = 0;
-
+	
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 2. * epsilon;
-		em_coeff[i] = 1. / (8. * PI * EPSILON0) * _P0.Q * _P.Q / SIZE;
 	,
 		double de_lj = 0;
-		double de_em = 0;
 		double dea_lj = 0;
-		double dea_em = 0;
 	,
-		get_e(de_lj, de_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind], 1.f);
-		get_e(dea_lj, dea_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind], tvm_coeff);
+		get_e(de_lj, p_f - _p, ss_ss[props_ind], 1.f);
+		get_e(dea_lj, p_f - _p, ss_ss[props_ind], tvm_coeff);
 	,
 		e_lj += lj_coeff[props_ind] * de_lj;
-		e_em += em_coeff[props_ind] * de_em;
 		ea_lj += lj_coeff[props_ind] * (dea_lj - de_lj);
-		ea_em += em_coeff[props_ind] * (dea_em - de_em);
 	);
 
-	vec_all.set_single(ind, e_em + e_lj, ENRG);
-	vec_all.set_single(ind, ea_lj + ea_em, TVM);
+	vec_all.set_single(ind, e_lj, ENRG);
+	vec_all.set_single(ind, ea_lj, TVM);
 }
 
 __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 	double v_lj = 0;
-	double v_em = 0;
 
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * SIZE * SIZE * epsilon / sigma / sigma / (3. * V) / 2.;
-		em_coeff[i] = 1. / (4. * PI * EPSILON0) / SIZE / (3. * V) * _P0.Q * _P.Q / 2.;
 	,
 		double dv_lj = 0;
-		double dv_em = 0;
 	,
-		get_viri(dv_lj, dv_em, p_f - _p, ss_ss[props_ind], rr_ss[props_ind]);
+		get_viri(dv_lj, p_f - _p, ss_ss[props_ind]);
 	,
 		v_lj += lj_coeff[props_ind] * dv_lj;
-		v_em += em_coeff[props_ind] * dv_em;
 	)
 
-	vec_all.set_single(ind, v_lj + v_em, VIRI);
+	vec_all.set_single(ind, v_lj, VIRI);
 }
 
 double total_time = 0;

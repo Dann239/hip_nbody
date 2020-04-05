@@ -26,7 +26,7 @@ void randomize() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * _sqrt(3 * K * T / get_properties(i).M);
+			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * _sqrt(3 * T / get_properties(i).M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -74,9 +74,6 @@ long long flop() {
 #ifdef ENABLE_LJ
 	res += 13;
 #endif
-#ifdef ENABLE_EM
-	res += 9;
-#endif
 	return res;
 }
 
@@ -115,7 +112,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
 	alloc();
 	randomize();
-	load("data/dump.dat");
+	//load("data/dump.dat");
 
 	window_init();
 
@@ -140,9 +137,7 @@ int main(int argc, char* argv[], char* envp[]) {
 
 		static vector<compute*> to_cout = {
 			new total_energy(),
-			new temperature(),
-			new total_pressure(),
-			new virial_pressure() };
+			new temperature() };
 		output_cout(to_cout);
 		static string output_filename = OUTPUT_FILENAME;
 		static ofstream out_csv(output_filename);
