@@ -13,6 +13,42 @@
 #include <string>
 using namespace std;
 
+double uniform_rand() {
+	return (double)rand() / RAND_MAX;
+}
+double maxwell(double v, double T, double m) {
+	return sqrt(m / (2*PI*T)) * exp(-m*v*v / (2*T));
+}
+double inv_maxwell(double p, double T, double m) {
+	return sqrt(2*T*log(sqrt(m / (2*PI*T)) / p) / m);
+}
+double get_maxwell_speed(double T, double m = 1) {
+	double basement = 1e-20;
+	double floor_size = 0.0001;
+	double roof = maxwell(0, T, m);
+
+	vector<double> ziggurat;
+	double next_floor = basement;
+	do {
+		ziggurat.push_back(next_floor);
+		next_floor += inv_maxwell(ziggurat.back(), T, m) / floor_size;
+	} while(next_floor < roof);
+	ziggurat.push_back(roof);
+	
+	double floor = rand() % (ziggurat.size() - 1);
+	double vel_max = inv_maxwell(ziggurat[floor], T, m);
+	double vel_next = inv_maxwell(ziggurat[floor + 1], T, m);
+
+	double vel_new;
+	do {
+		vel_new = uniform_rand() * vel_max;
+	} while(vel_new > vel_next && ziggurat[floor] + uniform_rand() * (ziggurat[floor+1] - ziggurat[floor]) > maxwell(vel_new, T, m));
+
+	if(rand() & 1)
+		vel_new = -vel_new;
+	return vel_new;
+}
+
 void randomize() {
 	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
 	static bool grid[grid_size][grid_size][grid_size];
@@ -26,7 +62,7 @@ void randomize() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = ((double)rand() / RAND_MAX - .5) * 2 * _sqrt(3 * T / get_properties(i).M);
+			vel[j][i] = get_maxwell_speed(T, get_properties(i).M);//(uniform_rand() * 2 - 1) * _sqrt(3 * T / get_properties(i).M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -104,6 +140,8 @@ void output_cout(const vector<compute*>& to_cout) {
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
+	//cout << get_maxwell_speed(1) << endl;
+	//return 0;
 #ifndef __HCC__
 	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
 		return -1;
