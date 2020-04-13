@@ -7,8 +7,6 @@ constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
 constexpr int GRID_SIZE = 16; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
-constexpr int LATTICE_STEP_COUNT = 8; 
-
 constexpr double _cbrt(double a) {
 	if (a < 0)
 		return -_cbrt(-a);
@@ -44,18 +42,20 @@ constexpr double _sqrt(double a) {
 
 constexpr double PI = 3.14159265359;
 
-constexpr double T = 1;
-constexpr double N = 1;
+constexpr double T = 2;
+constexpr double N = 0.7;
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
 constexpr double ALPHA = 1e-5;
-constexpr double TIME_STEP = 0.00005;
-constexpr int SKIPS = 1000;
-constexpr int NSTEPS = 20000;
 
-constexpr const char* OUTPUT_FILENAME = "data/datadump.xyz";
+constexpr const char* OUTPUT_FILENAME = "data/datadump_1.00.xyz";
+constexpr double TIMESTEP_COEFF = 1.00;
+constexpr double TIME_STEP = 5e-5 * TIMESTEP_COEFF;
+constexpr int SKIPS = 100 / TIMESTEP_COEFF;
+constexpr int NSTEPS = 1000;
+
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -93,5 +93,3 @@ struct properties {
 
 properties get_properties(int num);
 ELEMS get_elem_type(int num);
-
-static_assert(1. / _cbrt(N / 4.) == SIZE / LATTICE_STEP_COUNT, "You seem to be retarded");

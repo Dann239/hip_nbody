@@ -55,8 +55,16 @@ void apply_andersen_thermostat(double T) {
 		vel[i][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
 }
 
-void randomize() {
+void randomize_fcc() {
+	constexpr int LATTICE_STEP_COUNT = 8;
+	constexpr bool validity = 1. / _cbrt(N / 4.) == SIZE / LATTICE_STEP_COUNT;
+	if(!validity) {
+		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
+		return;
+	}
+	
 	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
+
 
 	constexpr double a[3][3] = {
 		{0, cell_size / 2., cell_size / 2.},
@@ -81,6 +89,33 @@ void randomize() {
 					for (int num = 0; num < 3; num++)
 							pos[dim][offset + num + 1] = pos[dim][offset + 0] + a[num][dim];
 			}
+
+	push_values();
+}
+
+void randomize_default() {
+	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
+	static bool grid[grid_size][grid_size][grid_size];
+	for (int i = 0; i < grid_size; i++)
+		for (int j = 0; j < grid_size; j++)
+			for (int k = 0; k < grid_size; k++)
+				grid[i][j][k] = false;
+
+	for (int i = 0; i < AMOUNT; i++) {
+		int grid_pos[3];
+		for (int j = 0; j < 3; j++) {
+			grid_pos[j] = rand() % grid_size;
+			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
+			vel[j][i] = get_maxwell_speed(T, get_properties(i).M);
+		}
+
+		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
+			i--;
+			continue;
+		}
+
+		grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]] = true;
+	}
 
 	push_values();
 }
@@ -149,8 +184,6 @@ void output_cout(const vector<compute*>& to_cout) {
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
-	//cout << get_maxwell_speed(1) << endl;
-	//return 0;
 #ifndef __HCC__
 	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
 		return -1;
@@ -158,8 +191,8 @@ int main(int argc, char* argv[], char* envp[]) {
 	print_chars();
 
 	alloc();
-	randomize();
-	//load("data/dump.dat");
+	randomize_fcc();
+	load("data/dump.dat");
 
 	window_init();
 
@@ -194,6 +227,7 @@ int main(int argc, char* argv[], char* envp[]) {
 		};
 		output_csv(to_xyz, out_xyz);
 
+		/*
 		static string csv_filename = "data/data.csv";
 		static ofstream out_csv(csv_filename);
 		static vector<compute*> to_csv = {
@@ -202,11 +236,11 @@ int main(int argc, char* argv[], char* envp[]) {
 			new lindemann()
 		};
 		output_csv(to_csv, out_csv);
+		*/
 		
-		double new_T = temperature().calculate() + 1;
 		pull_values();
-		apply_andersen_thermostat(new_T);
-		push_values();
+		//apply_andersen_thermostat(T);
+		//push_values();
 
 		flops_output(t0);
 		print_err(false);
