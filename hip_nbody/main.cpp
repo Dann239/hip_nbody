@@ -25,6 +25,8 @@ double inv_maxwell(double p, double T, double m) {
 	return sqrt(2*T*log(sqrt(m / (2*PI*T)) / p) / m);
 }
 double get_maxwell_speed(double T, double m = 1) {
+	if(T == 0)
+		return 0;
 	double basement = 1e-20;
 	double floor_size = 0.0001;
 	double roof = maxwell(0, T, m);
@@ -108,7 +110,7 @@ void randomize_default() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = 0; //get_maxwell_speed(T, get_properties(i).M);
+			vel[j][i] = get_maxwell_speed(T, get_properties(i).M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -165,7 +167,7 @@ long long ntime() {
 
 void flops_output(long long t0) {
 	long long dt = (long long)ntime() - t0;
-	cout << "dt = " << dt / 1000000 << " ms (" << flop() * SKIPS * AMOUNT * AMOUNT / dt << " GFlops)" << endl;
+	cout << "dt = " << dt / 1000000 << " ms (" << flop() * SKIPS * AMOUNT * AMOUNT / dt << " GFlops)";
 }
 
 void output_csv(const vector<compute*>& to_csv, ofstream& out) {
@@ -193,7 +195,8 @@ int main(int argc, char* argv[], char* envp[]) {
 	print_chars();
 
 	alloc();
-	randomize_default();
+	//randomize_default();
+	randomize_fcc();
 	
 	window_init();
 
@@ -217,8 +220,11 @@ int main(int argc, char* argv[], char* envp[]) {
 		if (NSTEPS != -1) cout << i + 1 << "/" << NSTEPS << ": ";
 
 		static vector<compute*> to_cout = {
+			new elapsed_time(),
 			new total_energy(),
-			new temperature() };
+			new potential_energy(),
+			new kinetic_energy()
+		};
 		output_cout(to_cout);
 		/*
 		static string xyz_filename = OUTPUT_FILENAME;
@@ -228,22 +234,19 @@ int main(int argc, char* argv[], char* envp[]) {
 		};
 		output_csv(to_xyz, out_xyz);
 		*/
-		/*
+		
 		static string csv_filename = "data/data.csv";
 		static ofstream out_csv(csv_filename);
-		static vector<compute*> to_csv = {
-			new elapsed_time(),
-			new temperature(),
-			new lindemann()
-		};
+		static vector<compute*> to_csv = to_cout;
 		output_csv(to_csv, out_csv);
-		*/
+		
 		
 		pull_values();
-		//apply_andersen_thermostat(T);
+		//apply_andersen_thermostat(0.2);
 		//push_values();
 
-		flops_output(t0);
+		//flops_output(t0);
+		cout << endl;
 		print_err(false);
 	}
 	window_delete();

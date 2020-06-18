@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int SCREEN_SIZE = 500;
+constexpr int SCREEN_SIZE = 1000;
 
 void window_init();
 void window_show();
