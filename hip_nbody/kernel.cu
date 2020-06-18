@@ -289,7 +289,7 @@ __device__ void get_a(double3& a_lj, double3& a_eam, float3 d, const float ss_ss
 #ifdef ENABLE_EAM
 	float _r = rsqrtf(r2);
 	float r = 1 / _r;
-	a_eam += (log_th - beta * r) * expf(-beta * r) * _r * d;
+	a_eam += (log_th + beta * r) * expf(-beta * r) * _r * d;
 #endif
 }
 
@@ -350,8 +350,8 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props, double beta, double 
 	
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * SIZE * epsilon / sigma / sigma / _P0.M;
-		c1 = beta * 2 + logf(Z0);
-		c2 = A * beta * SIZE;
+		c1 = -logf(Z0);
+		c2 = A * beta * expf(beta) * SIZE;
 	,
 		double3 da_lj = d3_0;
 		double3 da_eam = d3_0;

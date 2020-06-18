@@ -1,11 +1,11 @@
 #pragma once
 
 //#define ENABLE_LJ
-//#define ENABLE_PB
+#define ENABLE_PB
 #define ENABLE_EAM
 
-constexpr int BLOCK_SIZE = 2; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 1; //optimal is SMM_count * M
+constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
+constexpr int GRID_SIZE = 10; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -49,10 +49,8 @@ constexpr double N = 0.7;
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
-constexpr double ALPHA = 1e-5;
-
 constexpr const char* OUTPUT_FILENAME = "data/datadump_1.00.xyz";
-constexpr double TIME_STEP = 5e-5;
+constexpr double TIME_STEP = 0.1e-5;
 constexpr int SKIPS = 100;
 constexpr int NSTEPS = -1;
 constexpr double Z0 = 12;
