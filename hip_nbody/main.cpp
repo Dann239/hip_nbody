@@ -13,6 +13,8 @@
 #include <string>
 using namespace std;
 
+double BETA = 5, A = 0.5;
+
 double uniform_rand() {
 	return (double)rand() / RAND_MAX;
 }
@@ -106,7 +108,7 @@ void randomize_default() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = get_maxwell_speed(T, get_properties(i).M);
+			vel[j][i] = 0; //get_maxwell_speed(T, get_properties(i).M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -191,9 +193,8 @@ int main(int argc, char* argv[], char* envp[]) {
 	print_chars();
 
 	alloc();
-	randomize_fcc();
-	load("data/dump.dat");
-
+	randomize_default();
+	
 	window_init();
 
 	force_energy_calc();
@@ -219,14 +220,14 @@ int main(int argc, char* argv[], char* envp[]) {
 			new total_energy(),
 			new temperature() };
 		output_cout(to_cout);
-		
+		/*
 		static string xyz_filename = OUTPUT_FILENAME;
 		static ofstream out_xyz(xyz_filename);
 		static vector<compute*> to_xyz = {
 			new complete_state()
 		};
 		output_csv(to_xyz, out_xyz);
-
+		*/
 		/*
 		static string csv_filename = "data/data.csv";
 		static ofstream out_csv(csv_filename);
@@ -247,7 +248,6 @@ int main(int argc, char* argv[], char* envp[]) {
 	}
 	window_delete();
 
-	//dump("data/dump.dat");
 	dealloc();
 	return 0;
 }

@@ -42,7 +42,7 @@ public:
 		v_gpu_new[offset + Y][i] = p.y;
 		v_gpu_new[offset + Z][i] = p.z;
 	}
-	__device__ void get_single(int i, int offset) const {
+	__device__ double get_single(int i, int offset) const {
 		return v_gpu_old[offset][i];
 	}
 	__device__ void set_single(int i, double p, int offset) const {
@@ -92,15 +92,15 @@ public:
 constexpr int NVECS = 9;
 #define POS 0
 #define VEL 3
-#define ENRG 6
-#define VIRI 7
-#define TVM 8
+#define THETA 6
+#define ENRG 7
+#define VIRI 8
 vec<NVECS> vec_all;
 double** pos = &vec_all.v_raw[POS];
 double** vel = &vec_all.v_raw[VEL];
+double*& theta = vec_all.v_raw[THETA];
 double*& enrg = vec_all.v_raw[ENRG];
 double*& viri = vec_all.v_raw[VIRI];
-double*& tvm = vec_all.v_raw[TVM];
 
 static properties* props;
 void alloc() {
@@ -214,90 +214,103 @@ __device__ float3 to_f3(double3 a) {
 	return {(float)a.x, (float)a.y, (float)a.z};
 }
 
-#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)  \
-    int tid = threadIdx.x,                                                      \
-    bid = blockIdx.x,                                                           \
-    ind = bid * blockDim.x + tid;                                               \
-                                                                                \
-    double3 p = 1. / SIZE * vec_all.get(ind, POS),                              \
-    v = vec_all.get(ind, VEL);                                                  \
-                                                                                \
-    float3 p_f = to_f3(p);                                                      \
-    properties _P0 = props[get_elem(bid, props[0])];                            \
-                                                                                \
-    double lj_coeff[ELEMS_NUM];                                                 \
-    float ss_ss[ELEMS_NUM];                                                     \
-	                                                                            \
-	for(int i = 0; i < ELEMS_NUM; i++) {                                        \
-		                                                                        \
-        properties _P = props[i];                                               \
-        double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);                        \
-        double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                              \
-		ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                             \
-		                                                                        \
-        __COEFFS__                                                              \
-	}                                                                           \
-	                                                                            \
-    extern __shared__ float shm[];                                              \
-    float* _posx = shm;                                                         \
-    float* _posy = &shm[blockDim.x];                                            \
-    float* _posz = &shm[blockDim.x * 2];                                        \
-    int props_ind = 0;                                                          \
-    for (int i = 0; i < gridDim.x; i++) {                                       \
-                                                                                \
-        __syncthreads();                                                        \
-        float3 _pos = to_f3(1. / SIZE * vec_all.get(i * blockDim.x + tid, POS));\
-        _posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;          \
-                                                                                \
-        if(!invalid_elem(i, _P0, props_ind + 1)) props_ind++;                   \
-        __INIT__                                                                \
-                                                                                \
-        __syncthreads();                                                        \
-        for (int j = 0; j < blockDim.x; j++) {                                  \
-            float3 _p = float3({_posx[j],_posy[j],_posz[j]});                   \
-            if (i != bid || j != tid) {                                         \
-                __BODY__                                                        \
-            }                                                                   \
-        }                                                                       \
-        __POST__                                                                \
-    }                                                                           \
-                                                                                \
-	p = SIZE * p;                                                               \
+#define GPU_PAIR_INTERACTION_WRAPPER(__COEFFS__, __INIT__, __BODY__, __POST__)        \
+    int tid = threadIdx.x,                                                            \
+    bid = blockIdx.x,                                                                 \
+    ind = bid * blockDim.x + tid;                                                     \
+                                                                                      \
+    double3 p = 1. / SIZE * vec_all.get(ind, POS),                                    \
+    v = vec_all.get(ind, VEL);                                                        \
+    double th = vec_all.get_single(ind, THETA);                                       \
+    double logth = log(th);                                                           \
+                                                                                      \
+    float3 p_f = to_f3(p);                                                            \
+    properties _P0 = props[get_elem(bid, props[0])];                                  \
+                                                                                      \
+    double lj_coeff[ELEMS_NUM];                                                       \
+    float ss_ss[ELEMS_NUM];                                                           \
+                                                                                      \
+    for(int i = 0; i < ELEMS_NUM; i++) {                                              \
+                                                                                      \
+        properties _P = props[i];                                                     \
+        double epsilon = sqrt(_P.EPSILON * _P0.EPSILON);                              \
+        double sigma = (_P.SIGMA + _P0.SIGMA) / 2;                                    \
+        ss_ss[i] = (SIZE * SIZE) / (sigma * sigma);                                   \
+                                                                                      \
+        __COEFFS__                                                                    \
+    }                                                                                 \
+                                                                                      \
+    extern __shared__ float shm[];                                                    \
+    float* _posx = shm;                                                               \
+    float* _posy = &shm[blockDim.x];                                                  \
+    float* _posz = &shm[blockDim.x * 2];                                              \
+    int props_ind = 0;                                                                \
+    for (int i = 0; i < gridDim.x; i++) {                                             \
+                                                                                      \
+        __syncthreads();                                                              \
+        float3 _pos = to_f3(1. / SIZE * vec_all.get(i * blockDim.x + tid, POS));      \
+        _posx[tid] = _pos.x; _posy[tid] = _pos.y; _posz[tid] = _pos.z;                \
+                                                                                      \
+        if(!invalid_elem(i, _P0, props_ind + 1)) props_ind++;                         \
+        __INIT__                                                                      \
+                                                                                      \
+        __syncthreads();                                                              \
+        for (int j = 0; j < blockDim.x; j++) {                                        \
+            float3 _p = float3({_posx[j],_posy[j],_posz[j]});                         \
+            if (i != bid || j != tid) {                                               \
+                __BODY__                                                              \
+            }                                                                         \
+        }                                                                             \
+        __POST__                                                                      \
+    }                                                                                 \
+                                                                                      \
+    p = SIZE * p;                                                                     \
 
 
-__device__ void get_a(double3& a_lj, float3 d, const float ss_ss) {
+__device__ void get_a(double3& a_lj, double3& a_eam, float3 d, const float ss_ss, const float log_th, const float beta, const float c1) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
 
 	float d2 = hypotf2(d);
+	float r2 = d2 * ss_ss;
 
 #ifdef ENABLE_LJ
-	float r2 = d2 * ss_ss,
-		r_2 = 1.f / r2,
+	float r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2,
 		r_8 = r_4 * r_4,
 		_2r_14__r_8 = (r_6 - .5f) * r_8;
 	a_lj += (_2r_14__r_8 * d);
+
+
 #endif
 
+#ifdef ENABLE_EAM
+	float _r = rsqrtf(r2);
+	float r = 1 / _r;
+	a_eam += (log_th - beta * r) * expf(-beta * r) * _r * d;
+#endif
 }
 
 
-__device__ void get_e(double& e_lj, float3 d, const float ss_ss, const float tvm_coeff) {
+__device__ void get_e(double& e_lj, double& e_eam, float3 d, const float ss_ss, const float beta, const float c1) {
 #ifdef ENABLE_PB
 	d -= roundf(d);
 #endif
 
-	float d2 = hypotf2(d) * tvm_coeff;
+	float d2 = hypotf2(d);
+	float r2 = d2 * ss_ss;
 
 #ifdef ENABLE_LJ
-	float r2 = d2 * ss_ss,
-		r_2 = 1.f / r2,
+	float r_2 = 1.f / r2,
 		r_4 = r_2 * r_2,
 		r_6 = r_4 * r_2;
 	e_lj += (r_6 - 1.f) * r_6;
+#endif
+#ifdef ENABLE_EAM
+	float r = sqrtf(r2);
+	e_eam += expf(-beta * r) * (r + c1);
 #endif
 
 }
@@ -322,21 +335,35 @@ __device__ void get_viri(double& v_lj, float3 d, const float ss_ss) {
 
 }
 
-__global__
-void euler_gpu(const vec<NVECS> vec_all, properties* props) {
-	double3 a_lj = d3_0;
+__device__ void get_th(double& th, const float3 d, const float coeff) {
+	th += expf(sqrtf(hypotf2(d)) * coeff);
+}
 
+__global__
+void euler_gpu(const vec<NVECS> vec_all, properties* props, double beta, double A) {
+	double3 a_lj = d3_0;
+	double3 a_eam = d3_0;
+
+	extern __shared__ float _shm[];
+	float* _thetas = &_shm[blockDim.x * 3];
+	float c1, c2;
+	
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 48. * SIZE * epsilon / sigma / sigma / _P0.M;
+		c1 = beta * 2 + logf(Z0);
+		c2 = A * beta * SIZE;
 	,
 		double3 da_lj = d3_0;
+		double3 da_eam = d3_0;
+		_thetas[tid] = (logf(vec_all.get_single(i * blockDim.x + tid, THETA)) + logth) * 0.5 + c1;
 	,
-		get_a(da_lj, p_f - _p, ss_ss[props_ind]);
+		get_a(da_lj, da_eam, p_f - _p, ss_ss[props_ind], _thetas[j], beta, c1);
 	,
 		a_lj += lj_coeff[props_ind] * da_lj;
-		)
+		a_eam += c2 * da_eam;
+	);
 
-	double3 a = a_lj;
+	double3 a = a_lj + a_eam;
 
 	v += TIME_STEP * a;
 	p += TIME_STEP * v;
@@ -345,27 +372,32 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props) {
 	vec_all.set(ind, v, VEL);
 }
 
-constexpr float tvm_coeff = (1 + (float)ALPHA) * (1 + (float)ALPHA);
 __global__
-void energy_gpu (const vec<NVECS> vec_all, properties* props) {
+void energy_gpu (const vec<NVECS> vec_all, properties* props, double beta, double A) {
 	double e_lj = 0;
-	double ea_lj = 0;
+	double e_eam = 0;
 	
+	double c1 = -1 + 1 / beta;
+	double eam_coeff;
+
 	GPU_PAIR_INTERACTION_WRAPPER(
 		lj_coeff[i] = 2. * epsilon;
+		eam_coeff = A * beta * exp(beta) / 2;
 	,
 		double de_lj = 0;
-		double dea_lj = 0;
+		double de_eam = 0;
 	,
-		get_e(de_lj, p_f - _p, ss_ss[props_ind], 1.f);
-		get_e(dea_lj, p_f - _p, ss_ss[props_ind], tvm_coeff);
+		get_e(de_lj, de_eam, p_f - _p, ss_ss[props_ind], beta, c1);
 	,
 		e_lj += lj_coeff[props_ind] * de_lj;
-		ea_lj += lj_coeff[props_ind] * (dea_lj - de_lj);
+		e_eam += eam_coeff * de_eam;
 	);
+#ifdef ENABLE_EAM
+	e_eam += eam_coeff / beta * th * (beta - log(Z0) - 1 + log(th));
+#endif
 
-	vec_all.set_single(ind, e_lj, ENRG);
-	vec_all.set_single(ind, ea_lj, TVM);
+	vec_all.set_single(ind, e_lj + e_eam, ENRG);
+
 }
 
 __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
@@ -379,31 +411,46 @@ __global__ void viri_gpu(const vec<NVECS> vec_all, properties* props) {
 		get_viri(dv_lj, p_f - _p, ss_ss[props_ind]);
 	,
 		v_lj += lj_coeff[props_ind] * dv_lj;
-	)
+	);
 
 	vec_all.set_single(ind, v_lj, VIRI);
+}
+
+__global__ void theta_gpu(const vec<NVECS> vec_all, properties* props, double beta) {
+	double theta = 0;
+	float coeff = -SIZE * beta;
+
+	GPU_PAIR_INTERACTION_WRAPPER(
+		;
+	,
+		;
+	,
+		get_th(theta, p_f - _p, coeff);
+	,
+		;
+	);
+
+	vec_all.set_single(ind, theta, THETA);
 }
 
 double total_time = 0;
 void euler_steps(int steps) {
 	for(int i = 0; i < steps; i++) {
 	#ifndef __INTELLISENSE__
-		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
+		theta_gpu << < GRID_SIZE, BLOCK_SIZE, sizeof(float)* BLOCK_SIZE * 3, stream >> > (vec_all, props, BETA);
+		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 4, stream >>> (vec_all, props, BETA, A);
 	#endif
-		vec_all.gpu_copy(0, 6);
+		vec_all.gpu_copy(0, 7);
 	}
 	total_time += TIME_STEP * steps;
-	#ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
-	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
-	#endif
-	
-	vec_all.invalidate();
+	force_energy_calc();
 }
 
 void force_energy_calc() {
 #ifndef __INTELLISENSE__
-	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
+	theta_gpu << < GRID_SIZE, BLOCK_SIZE, sizeof(float)* BLOCK_SIZE * 3, stream >> > (vec_all, props, BETA);
+	vec_all.gpu_copy(6, 1);
+	energy_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props, BETA, A);
 	viri_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(float) * BLOCK_SIZE * 3, stream >>> (vec_all, props);
 #endif
 	vec_all.invalidate();

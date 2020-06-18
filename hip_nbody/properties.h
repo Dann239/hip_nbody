@@ -1,10 +1,11 @@
 #pragma once
 
-#define ENABLE_LJ
-#define ENABLE_PB
+//#define ENABLE_LJ
+//#define ENABLE_PB
+#define ENABLE_EAM
 
-constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 16; //optimal is SMM_count * M
+constexpr int BLOCK_SIZE = 2; //optimal is 128 * N for nvidia, 256 * N for amd
+constexpr int GRID_SIZE = 1; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -51,11 +52,11 @@ constexpr double SIZE = _cbrt(V);
 constexpr double ALPHA = 1e-5;
 
 constexpr const char* OUTPUT_FILENAME = "data/datadump_1.00.xyz";
-constexpr double TIMESTEP_COEFF = 1.00;
-constexpr double TIME_STEP = 5e-5 * TIMESTEP_COEFF;
-constexpr int SKIPS = 100 / TIMESTEP_COEFF;
-constexpr int NSTEPS = 1000;
-
+constexpr double TIME_STEP = 5e-5;
+constexpr int SKIPS = 100;
+constexpr int NSTEPS = -1;
+constexpr double Z0 = 12;
+extern double BETA, A;
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
@@ -73,6 +74,7 @@ struct properties {
 	void set_properties(ELEMS type) {
 		switch (type)
 		{
+
 		case LJ_PARTICLE:
 			SIGMA = 1;
 			M = 1;
