@@ -54,7 +54,7 @@ public:
 	temperature();
 	double calculate() override;
 };
-/*
+
 class temperature_pressure : public compute {
 public:
 	temperature_pressure();
@@ -72,11 +72,6 @@ public:
 	double calculate() override;
 };
 
-class tvm_du : public total {
-public:
-	tvm_du();
-};
-*/
 class elapsed_time : public compute {
 public:
 	elapsed_time();

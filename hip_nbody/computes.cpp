@@ -51,21 +51,19 @@ temperature::temperature() : compute("T = ", 1, "; ") {}
 double temperature::calculate() {
 	return value = (2. / 3.) * kinetic_energy().calculate();
 }
-/*
-temperature_pressure::temperature_pressure() : compute("Pt = ", 1, " Pa; ") {}
+
+temperature_pressure::temperature_pressure() : compute("Pt = ", 1, " ; ") {}
 double temperature_pressure::calculate() {
-	return value = N * K * temperature().calculate();
+	return value = N * temperature().calculate();
 }
 
-virial_pressure::virial_pressure() : total(viri), compute("Pv = ", 1, " Pa; ", 5) {}
+virial_pressure::virial_pressure() : total(viri), compute("Pv = ", 1, "; ") {}
 
-total_pressure::total_pressure() : compute("P = ", 1, " Pa; ") {}
+total_pressure::total_pressure() : compute("P = ", 1, " ; ") {}
 double total_pressure::calculate() {
 	return value = temperature_pressure().calculate() + virial_pressure().calculate();
 }
 
-tvm_du::tvm_du() : total(tvm), compute("dUtvm/dV = ", -1. / (V * 3. * ALPHA) * 1, " Pa; ", 5) {}
-*/
 elapsed_time::elapsed_time() : compute("t = ", 1, "; ") {}
 double elapsed_time::calculate() {
 	return value = total_time;

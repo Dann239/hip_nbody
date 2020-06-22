@@ -13,7 +13,7 @@
 #include <string>
 using namespace std;
 
-double BETA = 5, A = 0.5;
+double BETA = 2, A = 1;
 
 double uniform_rand() {
 	return (double)rand() / RAND_MAX;
@@ -59,14 +59,16 @@ void apply_andersen_thermostat(double T) {
 		vel[i][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
 }
 
+constexpr bool fcc_validity() {
+	return 1. / _cbrt(N / 4.) == SIZE / (int)_cbrt(AMOUNT / 4);
+}
 void randomize_fcc() {
-	constexpr int LATTICE_STEP_COUNT = 8;
-	constexpr bool validity = 1. / _cbrt(N / 4.) == SIZE / LATTICE_STEP_COUNT;
-	if(!validity) {
+	constexpr int LATTICE_STEP_COUNT = (int)_cbrt(AMOUNT / 4);
+	if (!fcc_validity()) {
 		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
 		return;
 	}
-	
+
 	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
 
 
@@ -85,13 +87,50 @@ void randomize_fcc() {
 					for (int num = 0; num < 4; num++)
 						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
 
-				pos[X][offset + 0] = cell_size * i;  
+				pos[X][offset + 0] = cell_size * i;
 				pos[Y][offset + 0] = cell_size * j;
 				pos[Z][offset + 0] = cell_size * k;
 
 				for (int dim = 0; dim < 3; dim++)
 					for (int num = 0; num < 3; num++)
-							pos[dim][offset + num + 1] = pos[dim][offset + 0] + a[num][dim];
+						pos[dim][offset + num + 1] = pos[dim][offset + 0] + a[num][dim];
+			}
+
+	push_values();
+}
+
+
+constexpr bool bcc_validity() {
+	return 1. / _cbrt(N / 2.) == SIZE / (int)_cbrt(AMOUNT / 2);
+}
+void randomize_bcc() {
+	constexpr int LATTICE_STEP_COUNT = (int)_cbrt(AMOUNT / 2);
+
+	if (!bcc_validity()) {
+		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
+		return;
+	}
+
+	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
+
+
+	constexpr double a[3] = { cell_size / 2., cell_size / 2., cell_size / 2. };
+
+	for (int i = 0; i < LATTICE_STEP_COUNT; i++)
+		for (int j = 0; j < LATTICE_STEP_COUNT; j++)
+			for (int k = 0; k < LATTICE_STEP_COUNT; k++) {
+				int offset = 2 * (k + j * LATTICE_STEP_COUNT + i * LATTICE_STEP_COUNT * LATTICE_STEP_COUNT);
+
+				for (int dim = 0; dim < 3; dim++)
+					for (int num = 0; num < 2; num++)
+						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
+
+				pos[X][offset + 0] = cell_size * i;
+				pos[Y][offset + 0] = cell_size * j;
+				pos[Z][offset + 0] = cell_size * k;
+
+				for (int dim = 0; dim < 3; dim++)
+					pos[dim][offset + 1] = pos[dim][offset + 0] + a[dim];
 			}
 
 	push_values();
@@ -195,8 +234,8 @@ int main(int argc, char* argv[], char* envp[]) {
 	print_chars();
 
 	alloc();
-	//randomize_default();
-	randomize_fcc();
+	if (bcc_validity()) randomize_bcc();
+	else return 0;
 	
 	window_init();
 
@@ -223,17 +262,18 @@ int main(int argc, char* argv[], char* envp[]) {
 			new elapsed_time(),
 			new total_energy(),
 			new potential_energy(),
-			new kinetic_energy()
+			new kinetic_energy(),
+			new total_pressure()
 		};
 		output_cout(to_cout);
-		/*
+		
 		static string xyz_filename = OUTPUT_FILENAME;
 		static ofstream out_xyz(xyz_filename);
 		static vector<compute*> to_xyz = {
 			new complete_state()
 		};
 		output_csv(to_xyz, out_xyz);
-		*/
+		
 		
 		static string csv_filename = "data/data.csv";
 		static ofstream out_csv(csv_filename);
