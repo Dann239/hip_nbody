@@ -5,7 +5,7 @@
 #define ENABLE_EAM
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 8; //optimal is SMM_count * M
+constexpr int GRID_SIZE = 16; //optimal is SMM_count * M
 constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE;
 
 constexpr double _cbrt(double a) {
@@ -45,18 +45,19 @@ constexpr double PI = 3.1415926535897932;
 
 constexpr double RC = _sqrt(_cbrt(2));
 
-constexpr double T = 5.00;
-constexpr double N = 1.05;
+constexpr double T = 0.1 / _cbrt(2);
+constexpr double N = 1 * _sqrt(2);
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
-constexpr const char* OUTPUT_FILENAME = "data/datadump.xyz";
+constexpr const char* OUTPUT_FILENAME = "data/FCC_LJ.xyz";
 constexpr double TIME_STEP = 1e-3;
-constexpr int SKIPS = 50;
-constexpr int NSTEPS = -1;
+constexpr int SKIPS = 100;
+constexpr int NSTEPS = 300;
 constexpr double Z0 = 12;
-extern double BETA, A;
+constexpr double BETA = 0.5, A = 1.5;
+
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 

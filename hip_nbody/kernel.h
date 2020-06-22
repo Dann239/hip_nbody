@@ -2,6 +2,7 @@
 
 extern double** pos;
 extern double** vel;
+extern double** acc;
 
 extern double*& enrg;
 extern double*& viri;

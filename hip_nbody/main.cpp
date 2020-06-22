@@ -4,6 +4,7 @@
 #include "computes.h"
 
 #include <vector>
+#include <array>
 #include <iostream>
 #include <fstream>
 #include <time.h>
@@ -13,7 +14,6 @@
 #include <string>
 using namespace std;
 
-double BETA = 2, A = 1;
 
 double uniform_rand() {
 	return (double)rand() / RAND_MAX;
@@ -28,7 +28,7 @@ double get_maxwell_speed(double T, double m = 1) {
 	if(T == 0)
 		return 0;
 	double basement = 1e-20;
-	double floor_size = 0.0001;
+	double floor_size = 0.00001;
 	double roof = maxwell(0, T, m);
 
 	vector<double> ziggurat;
@@ -57,83 +57,70 @@ void apply_andersen_thermostat(double T) {
 	int pnum = rand() % AMOUNT;
 	for(int i = 0; i < 3; i++)
 		vel[i][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
-}
-
-constexpr bool fcc_validity() {
-	return 1. / _cbrt(N / 4.) == SIZE / (int)_cbrt(AMOUNT / 4);
-}
-void randomize_fcc() {
-	constexpr int LATTICE_STEP_COUNT = (int)_cbrt(AMOUNT / 4);
-	if (!fcc_validity()) {
-		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
-		return;
-	}
-
-	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
-
-
-	constexpr double a[3][3] = {
-		{0, cell_size / 2., cell_size / 2.},
-		{cell_size / 2., 0, cell_size / 2.},
-		{cell_size / 2., cell_size / 2., 0}
-	};
-
-	for (int i = 0; i < LATTICE_STEP_COUNT; i++)
-		for (int j = 0; j < LATTICE_STEP_COUNT; j++)
-			for (int k = 0; k < LATTICE_STEP_COUNT; k++) {
-				int offset = 4 * (k + j * LATTICE_STEP_COUNT + i * LATTICE_STEP_COUNT * LATTICE_STEP_COUNT);
-
-				for (int dim = 0; dim < 3; dim++)
-					for (int num = 0; num < 4; num++)
-						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
-
-				pos[X][offset + 0] = cell_size * i;
-				pos[Y][offset + 0] = cell_size * j;
-				pos[Z][offset + 0] = cell_size * k;
-
-				for (int dim = 0; dim < 3; dim++)
-					for (int num = 0; num < 3; num++)
-						pos[dim][offset + num + 1] = pos[dim][offset + 0] + a[num][dim];
-			}
-
 	push_values();
 }
 
-
-constexpr bool bcc_validity() {
-	return 1. / _cbrt(N / 2.) == SIZE / (int)_cbrt(AMOUNT / 2);
-}
-void randomize_bcc() {
-	constexpr int LATTICE_STEP_COUNT = (int)_cbrt(AMOUNT / 2);
-
-	if (!bcc_validity()) {
+bool randomize_lattice(vector<array<double,3> > vecs) {
+	int step_count = round(cbrt(AMOUNT / vecs.size()));
+	if(vecs.size() * pow(step_count, 3) != AMOUNT) {
 		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
-		return;
+		return false;
 	}
+	double cell_size = SIZE / step_count;
 
-	constexpr double cell_size = SIZE / LATTICE_STEP_COUNT;
 
-
-	constexpr double a[3] = { cell_size / 2., cell_size / 2., cell_size / 2. };
-
-	for (int i = 0; i < LATTICE_STEP_COUNT; i++)
-		for (int j = 0; j < LATTICE_STEP_COUNT; j++)
-			for (int k = 0; k < LATTICE_STEP_COUNT; k++) {
-				int offset = 2 * (k + j * LATTICE_STEP_COUNT + i * LATTICE_STEP_COUNT * LATTICE_STEP_COUNT);
+	for (int i = 0; i < step_count; i++)
+		for (int j = 0; j < step_count; j++)
+			for (int k = 0; k < step_count; k++) {
+				int offset = vecs.size() * (k + j * step_count + i * step_count * step_count);
 
 				for (int dim = 0; dim < 3; dim++)
-					for (int num = 0; num < 2; num++)
+					for (int num = 0; num < vecs.size(); num++)
 						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
 
-				pos[X][offset + 0] = cell_size * i;
-				pos[Y][offset + 0] = cell_size * j;
-				pos[Z][offset + 0] = cell_size * k;
+				pos[X][offset] = cell_size * i;
+				pos[Y][offset] = cell_size * j;
+				pos[Z][offset] = cell_size * k;
 
 				for (int dim = 0; dim < 3; dim++)
-					pos[dim][offset + 1] = pos[dim][offset + 0] + a[dim];
+					for (int num = 0; num < vecs.size(); num++)
+						pos[dim][offset + num] = pos[dim][offset + 0] + cell_size * vecs[num][dim];
 			}
 
 	push_values();
+	return true;
+}
+
+bool randomize_fcc() {
+	return randomize_lattice(vector<array<double,3> >{
+		{0,  0,  0},
+		{.5, .5, 0},
+		{.5, 0, .5},
+		{0, .5, .5}});
+}
+
+bool randomize_bcc() {
+	return randomize_lattice(vector<array<double,3> >{
+		{0,  0,  0},
+		{.5, .5, .5}});
+}
+
+bool randomize_sc() {
+	return randomize_lattice(vector<array<double,3> >{
+		{0,  0,  0}});
+}
+
+bool randomize_dc() {
+	return randomize_lattice(vector<array<double,3> >{
+		{0,  0,  0},
+		{0,  .5,  .5},
+		{.5,  0,  .5},
+		{.5,  .5,  0},
+		{.75,  .75,  .75},
+		{.75,  .25,  .25},
+		{.25,  .75,  .25},
+		{.25,  .25,  .75}
+		});
 }
 
 void randomize_default() {
@@ -228,20 +215,23 @@ void output_cout(const vector<compute*>& to_cout) {
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
 #ifndef __HCC__
-	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0)))
+	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0))) {
+		cout << "Could not select the device: ";
+		print_err(true);
 		return -1;
+	}
 #endif
 	print_chars();
 
 	alloc();
-	if (bcc_validity()) randomize_bcc();
-	else return 0;
+	//randomize_default();
+	if (!randomize_fcc())
+		return 0;
 	
 	window_init();
 
 	force_energy_calc();
 	pull_values();
-
 	signal(SIGINT, [](int sig) { interrupt = true; });
 
 	for(int i = 0; i != NSTEPS && window_is_open() && !interrupt; i++) {
@@ -261,29 +251,27 @@ int main(int argc, char* argv[], char* envp[]) {
 		static vector<compute*> to_cout = {
 			new elapsed_time(),
 			new total_energy(),
+			new temperature(),
+			new total_pressure(),
 			new potential_energy(),
-			new kinetic_energy(),
-			new total_pressure()
+			new kinetic_energy()
 		};
 		output_cout(to_cout);
 		
-		static string xyz_filename = OUTPUT_FILENAME;
-		static ofstream out_xyz(xyz_filename);
-		static vector<compute*> to_xyz = {
-			new complete_state()
-		};
-		output_csv(to_xyz, out_xyz);
+		//static string xyz_filename = OUTPUT_FILENAME;
+		//static ofstream out_xyz(xyz_filename);
+		//static vector<compute*> to_xyz = {new complete_state()};
+		//output_csv(to_xyz, out_xyz);
 		
 		
-		static string csv_filename = "data/data.csv";
-		static ofstream out_csv(csv_filename);
-		static vector<compute*> to_csv = to_cout;
-		output_csv(to_csv, out_csv);
+		//static string csv_filename = "data/energy_example.csv";
+		//static ofstream out_csv(csv_filename);
+		//static vector<compute*> to_csv = to_cout;
+		//output_csv(to_csv, out_csv);
 		
 		
 		pull_values();
-		//apply_andersen_thermostat(0.2);
-		//push_values();
+		//apply_andersen_thermostat(0.000);
 
 		//flops_output(t0);
 		cout << endl;

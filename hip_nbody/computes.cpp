@@ -49,7 +49,7 @@ double total_energy::calculate() {
 
 temperature::temperature() : compute("T = ", 1, "; ") {}
 double temperature::calculate() {
-	return value = (2. / 3.) * kinetic_energy().calculate();
+	return value = (2. / 3.) * _cbrt(2) * kinetic_energy().calculate();
 }
 
 temperature_pressure::temperature_pressure() : compute("Pt = ", 1, " ; ") {}
@@ -77,6 +77,8 @@ void complete_state::output_csv(std::ofstream& stream, std::string ending) {
 			stream << pos[j][i] << ' ';
 		for(int j = 0; j < 3; j++)
 			stream << vel[j][i] << ' ';
+		for(int j = 0; j < 3; j++)
+			stream << acc[j][i] << ' ';
 		stream << '\n';
 	}
 }

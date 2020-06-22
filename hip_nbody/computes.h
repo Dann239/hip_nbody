@@ -9,7 +9,7 @@ private:
 	double cout_coeff;
 	int cout_precision;
 public:
-	compute(std::string _prefix = "UNDEFINED", double _coeff = 0, std::string _postfix = "FORMAT", int _precision = 3);
+	compute(std::string _prefix = "UNDEFINED", double _coeff = 0, std::string _postfix = "FORMAT", int _precision = 6);
 	double value = 0;
 	virtual double calculate() = 0;
 	virtual void output_cout();

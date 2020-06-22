@@ -89,15 +89,17 @@ public:
 	}
 };
 
-constexpr int NVECS = 9;
+constexpr int NVECS = 12;
 #define POS 0
 #define VEL 3
 #define THETA 6
-#define ENRG 7
-#define VIRI 8
+#define ACC 7
+#define ENRG 10
+#define VIRI 11
 vec<NVECS> vec_all;
 double** pos = &vec_all.v_raw[POS];
 double** vel = &vec_all.v_raw[VEL];
+double** acc = &vec_all.v_raw[ACC];
 double*& theta = vec_all.v_raw[THETA];
 double*& enrg = vec_all.v_raw[ENRG];
 double*& viri = vec_all.v_raw[VIRI];
@@ -297,6 +299,7 @@ void euler_gpu(const vec<NVECS> vec_all, properties* props, double beta, double 
 
 	vec_all.set(ind, p, POS);
 	vec_all.set(ind, v, VEL);
+	vec_all.set(ind, a, ACC);
 }
 
 __device__ void get_e(double& e_lj, double& e_eam, double3 d, const double ss_ss, const double beta, const double c1) {
@@ -370,8 +373,8 @@ __device__ void get_viri(double& v_lj, double& v_eam, double3 d, const double ss
 	double _r = rsqrt(r2);
 	double r = 1 / _r;
 	v_eam += (log_th + beta * r) * exp(-beta * r) * _r * d * d; //eam
-	//a_eam += (beta * (r - 1)) * exp(-beta * r) * _r * d; //eam pairwise
-	//a_eam += (log_th + beta) * exp(-beta * r) * _r * d; //eam embedding
+	//v_eam += (beta * (r - 1)) * exp(-beta * r) * _r * d * d; //eam pairwise
+	//v_eam += (log_th + beta) * exp(-beta * r) * _r * d * d; //eam embedding
 #endif
 
 }
@@ -436,8 +439,9 @@ void euler_steps(int steps) {
 #ifndef __INTELLISENSE__
 		euler_gpu <<< GRID_SIZE, BLOCK_SIZE, sizeof(double) * BLOCK_SIZE * 4, stream >>> (vec_all, props, BETA, A);
 #endif
-		vec_all.gpu_copy(0, 6);
+		vec_all.gpu_copy(0, 7);
 	}
+	vec_all.gpu_copy(ACC, 3);
 	total_time += TIME_STEP * steps;
 	force_energy_calc();
 }
