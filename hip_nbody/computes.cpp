@@ -73,7 +73,7 @@ double elapsed_time::calculate() {
 	return value = total_time;
 }
 
-sc_thermostat_dE::sc_thermostat_dE() : compute("t = ", 1, "; ") {}
+sc_thermostat_dE::sc_thermostat_dE() : compute("sc_dE = ", 1, "; ") {}
 double sc_thermostat_dE::calculate() {
 	return value = total_sc_thermostat_dE;
 }

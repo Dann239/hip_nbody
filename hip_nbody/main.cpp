@@ -268,6 +268,9 @@ int main(int argc, char* argv[], char* envp[]) {
 			new total_pressure(),
 			new potential_energy(),
 			new kinetic_energy()
+			#ifdef ENABLE_SC
+				,new sc_thermostat_dE()
+			#endif
 		};
 		output_cout(to_cout);
 		
