@@ -9,6 +9,7 @@ extern double*& viri;
 extern double*& tvm;
 
 extern double total_time;
+extern double total_sc_thermostat_dE;
 
 void alloc();
 void dealloc();

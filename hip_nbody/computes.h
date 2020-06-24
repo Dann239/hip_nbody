@@ -78,6 +78,12 @@ public:
 	double calculate() override;
 };
 
+class sc_thermostat_dE : public compute {
+public:
+	sc_thermostat_dE();
+	double calculate() override;
+};
+
 class complete_state : public compute {
 public:
 	double calculate() override;

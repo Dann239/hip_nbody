@@ -60,6 +60,19 @@ void apply_andersen_thermostat(double T) {
 	push_values();
 }
 
+double total_sc_thermostat_dE = 0;
+void apply_sc_thermostat() {
+	double T_current = (new temperature())->calculate();
+	double alpha = sqrt(T / T_current);
+
+	for(int pnum = 0; pnum < AMOUNT; pnum++)
+		for(int i = 0; i < 3; i++)
+			vel[i][pnum] *= alpha;
+
+	total_sc_thermostat_dE += (T - T_current) / ((2. / 3.) * _cbrt(2));
+	push_values();
+}
+
 bool randomize_lattice(vector<array<double,3> > vecs) {
 	int step_count = round(cbrt(AMOUNT / vecs.size()));
 	if(vecs.size() * pow(step_count, 3) != AMOUNT) {
@@ -271,6 +284,9 @@ int main(int argc, char* argv[], char* envp[]) {
 		
 		
 		pull_values();
+		#ifdef ENABLE_SC
+			apply_sc_thermostat();
+		#endif
 		//apply_andersen_thermostat(0.000);
 
 		//flops_output(t0);
