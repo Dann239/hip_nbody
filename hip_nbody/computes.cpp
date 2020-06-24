@@ -46,10 +46,9 @@ total_energy::total_energy() : compute("E = ", 1, "; ", 6) {}
 double total_energy::calculate() {
 	return value = kinetic_energy().calculate() + potential_energy().calculate()
 	#ifdef ENABLE_SC
-		- sc_thermostat_dE().calculate();
-	#elif
-		;
+		- sc_thermostat_dE().calculate()
 	#endif
+	;
 }
 
 temperature::temperature() : compute("T = ", 1, "; ") {}
