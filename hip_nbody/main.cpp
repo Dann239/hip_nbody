@@ -53,10 +53,12 @@ double get_maxwell_speed(double T, double m = 1) {
 	return vel_new;
 }
 
-void apply_andersen_thermostat(double T) {
-	int pnum = rand() % AMOUNT;
-	for(int i = 0; i < 3; i++)
-		vel[i][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
+void apply_andersen_thermostat(double T, int n = 1) {
+	for(int i = 0; i < n; i++) {
+		int pnum = rand() % AMOUNT;
+		for(int j = 0; j < 3; j++)
+			vel[j][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
+	}
 	push_values();
 }
 
@@ -150,15 +152,16 @@ void randomize_default() {
 	push_values();
 }
 
-void dump(string filename) {
+void dump(string filename, int amount = AMOUNT) {
 	pull_values();
 	ofstream out(filename, ios::binary);
 	for (int i = 0; i < 3; i++) {
-		out.write((char*)pos[i], AMOUNT * sizeof(double));
-		out.write((char*)vel[i], AMOUNT * sizeof(double));
+		out.write((char*)pos[i], amount * sizeof(double));
+		out.write((char*)vel[i], amount * sizeof(double));
 	}
 	out.close();
 }
+
 void load(string filename) {
 	ifstream in(filename, ios::binary);
 	if (!in.fail()) {
@@ -271,13 +274,14 @@ int main(int argc, char* argv[], char* envp[]) {
 		
 		
 		pull_values();
-		//apply_andersen_thermostat(0.000);
+		apply_andersen_thermostat(0.05, 10);
 
 		//flops_output(t0);
 		cout << endl;
 		print_err(false);
 	}
 	window_delete();
+	dump("fcc.dump", AMOUNT - 1)
 
 	dealloc();
 	return 0;
