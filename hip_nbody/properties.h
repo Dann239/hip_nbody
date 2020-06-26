@@ -3,6 +3,7 @@
 #define ENABLE_LJ
 #define ENABLE_PB
 #define ENABLE_EAM
+#define ENABLE_SC
 
 constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
 constexpr int GRID_SIZE = 16; //optimal is SMM_count * M

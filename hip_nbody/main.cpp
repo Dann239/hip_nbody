@@ -62,6 +62,19 @@ void apply_andersen_thermostat(double T, int n = 1) {
 	push_values();
 }
 
+double total_sc_thermostat_dE = 0;
+void apply_sc_thermostat() {
+	double T_current = (new temperature())->calculate();
+	double alpha = sqrt(T / T_current);
+
+	for(int pnum = 0; pnum < AMOUNT; pnum++)
+		for(int i = 0; i < 3; i++)
+			vel[i][pnum] *= alpha;
+
+	total_sc_thermostat_dE += (T - T_current) / ((2. / 3.) * _cbrt(2));
+	push_values();
+}
+
 bool randomize_lattice(vector<array<double,3> > vecs) {
 	int step_count = round(cbrt(AMOUNT / vecs.size()));
 	if(vecs.size() * pow(step_count, 3) != AMOUNT) {
@@ -258,6 +271,9 @@ int main(int argc, char* argv[], char* envp[]) {
 			new total_pressure(),
 			new potential_energy(),
 			new kinetic_energy()
+			#ifdef ENABLE_SC
+				,new sc_thermostat_dE()
+			#endif
 		};
 		output_cout(to_cout);
 		
@@ -274,14 +290,16 @@ int main(int argc, char* argv[], char* envp[]) {
 		
 		
 		pull_values();
-		apply_andersen_thermostat(0.05, 10);
-
+		#ifdef ENABLE_SC
+			apply_sc_thermostat();
+		#endif
+		//apply_andersen_thermostat(0.000);
 		//flops_output(t0);
 		cout << endl;
 		print_err(false);
 	}
 	window_delete();
-	dump("fcc.dump", AMOUNT - 1)
+	dump("fcc.dump", AMOUNT - 1);
 
 	dealloc();
 	return 0;
