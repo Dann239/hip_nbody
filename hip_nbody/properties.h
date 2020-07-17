@@ -1,13 +1,11 @@
 #pragma once
 
-#define ENABLE_LJ
+//#define ENABLE_LJ
 #define ENABLE_PB
-#define ENABLE_EAM
-#define ENABLE_SC
+//#define ENABLE_EAM
+//#define ENABLE_SC
 
-constexpr int BLOCK_SIZE = 128; //optimal is 128 * N for nvidia, 256 * N for amd
-constexpr int GRID_SIZE = 16; //optimal is SMM_count * M
-constexpr int AMOUNT = GRID_SIZE * BLOCK_SIZE; //2047 == 23 * 89
+constexpr int AMOUNT = 2048; //2047 == 23 * 89
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
@@ -54,10 +52,11 @@ constexpr double SIZE = _cbrt(V);
 
 constexpr const char* OUTPUT_FILENAME = "data/FCC_LJ.xyz";
 constexpr double TIME_STEP = 1e-3;
-constexpr int SKIPS = 100;
-constexpr int NSTEPS = 0;
+constexpr int SKIPS = 10;
+constexpr int NSTEPS = -1;
 constexpr double Z0 = 12;
 constexpr double BETA = 2, A = .5;
+constexpr double M = 1;
 
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
@@ -68,32 +67,3 @@ enum ELEMS {LJ_PARTICLE, ERROR};
 constexpr int ELEMS_NUM = 1;
 constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 1 };
 constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {LJ_PARTICLE};
-
-struct properties {
-	double SIGMA, EPSILON, M;
-	unsigned int COLOUR;
-	double divisions[ELEMS_NUM + 1];
-	void set_properties(ELEMS type) {
-		switch (type)
-		{
-
-		case LJ_PARTICLE:
-			SIGMA = 1;
-			M = 1;
-			EPSILON = 1;
-			COLOUR = 0xFF0000FF;
-			break;
-		default:
-			SIGMA = EPSILON = M = -1;
-			COLOUR = 0x777777FF;
-		}
-		for(int i = 0; i <= ELEMS_NUM; i++)
-			divisions[i] = ELEMS_DIVISIONS[i];
-	}
-	properties(ELEMS e) {
-		set_properties(e);
-	}
-};
-
-properties get_properties(int num);
-ELEMS get_elem_type(int num);

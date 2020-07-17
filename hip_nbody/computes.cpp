@@ -35,7 +35,7 @@ kinetic_energy::kinetic_energy() : compute("Ek = ", 1, "; ") {}
 double kinetic_energy::calculate() {
 	value = 0;
 	for (int i = 0; i < AMOUNT; i++)
-		value += get_properties(i).M * (
+		value += M * (
 			vel[X][i] * vel[X][i] +
 			vel[Y][i] * vel[Y][i] +
 			vel[Z][i] * vel[Z][i]) / 2. / AMOUNT;
@@ -86,8 +86,6 @@ void complete_state::output_csv(std::ofstream& stream, std::string ending) {
 			stream << pos[j][i] << ' ';
 		for(int j = 0; j < 3; j++)
 			stream << vel[j][i] << ' ';
-		for(int j = 0; j < 3; j++)
-			stream << acc[j][i] << ' ';
 		stream << '\n';
 	}
 }

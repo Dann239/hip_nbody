@@ -57,7 +57,7 @@ void apply_andersen_thermostat(double T, int n = 1) {
 	for(int i = 0; i < n; i++) {
 		int pnum = rand() % AMOUNT;
 		for(int j = 0; j < 3; j++)
-			vel[j][pnum] = get_maxwell_speed(T, get_properties(pnum).M);
+			vel[j][pnum] = get_maxwell_speed(T, M);
 	}
 	push_values();
 }
@@ -91,7 +91,7 @@ bool randomize_lattice(vector<array<double,3> > vecs) {
 
 				for (int dim = 0; dim < 3; dim++)
 					for (int num = 0; num < vecs.size(); num++)
-						vel[dim][offset + num] = get_maxwell_speed(T, get_properties(offset + num).M);
+						vel[dim][offset + num] = get_maxwell_speed(T, M);
 
 				pos[X][offset] = cell_size * i;
 				pos[Y][offset] = cell_size * j;
@@ -151,7 +151,7 @@ void randomize_default() {
 		for (int j = 0; j < 3; j++) {
 			grid_pos[j] = rand() % grid_size;
 			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = get_maxwell_speed(T, get_properties(i).M);
+			vel[j][i] = get_maxwell_speed(T, M);
 		}
 
 		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
@@ -230,14 +230,6 @@ void output_cout(const vector<compute*>& to_cout) {
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
-#ifndef __HCC__
-	if (!(argc > 1 ? selectDevice(std::stoi(argv[1])) : selectDevice(0))) {
-		cout << "Could not select the device: ";
-		print_err(true);
-		return -1;
-	}
-#endif
-	print_chars();
 
 	alloc();
 	//randomize_default();
@@ -245,8 +237,6 @@ int main(int argc, char* argv[], char* envp[]) {
 		return 0;
 	
 	window_init();
-
-	force_energy_calc();
 	pull_values();
 	signal(SIGINT, [](int sig) { interrupt = true; });
 
@@ -257,7 +247,7 @@ int main(int argc, char* argv[], char* envp[]) {
 	#ifdef SFML_STATIC
 		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
 		for (int j = 0; j < AMOUNT; j++)
-			window_draw_point(deflect(pos[X][j]) * OUTPUT_COEFF, deflect(pos[Y][j]) * OUTPUT_COEFF, get_properties(j).COLOUR);
+			window_draw_point(deflect(pos[X][j]) * OUTPUT_COEFF, deflect(pos[Y][j]) * OUTPUT_COEFF);
 		window_show();
 	#endif
 
@@ -268,7 +258,6 @@ int main(int argc, char* argv[], char* envp[]) {
 			new elapsed_time(),
 			new total_energy(),
 			new temperature(),
-			new total_pressure(),
 			new potential_energy(),
 			new kinetic_energy()
 			#ifdef ENABLE_SC
@@ -296,11 +285,9 @@ int main(int argc, char* argv[], char* envp[]) {
 		//apply_andersen_thermostat(0.000);
 		//flops_output(t0);
 		cout << endl;
-		print_err(false);
 	}
 	window_delete();
 	dump("fcc.dump", AMOUNT - 1);
 
-	dealloc();
 	return 0;
 }
