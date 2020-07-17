@@ -13,33 +13,59 @@ double* viri = new double[AMOUNT];
 OpenMM::Context* context;
 OpenMM::VerletIntegrator* verlet;
 OpenMM::System* sys;
-OpenMM::CustomNonbondedForce* lj; 
+OpenMM::NonbondedForce* klj;
+OpenMM::CustomNonbondedForce* lj;
+OpenMM::CustomGBForce* eam;
+
 void alloc() {
 	for(int i = 0; i < 3; i++) {
 		pos[i] = new double[AMOUNT];
 		vel[i] = new double[AMOUNT];
 	}
 	sys = new OpenMM::System();
-	lj = new OpenMM::CustomNonbondedForce(
-		"4*epsilon*((sigma/r)^12-(sigma/r)^6);"
-		"sigma=0.5*(sigma1+sigma2);"
-		"epsilon=sqrt(epsilon1*epsilon2);"
-	);
-	lj->addPerParticleParameter("sigma");
-	lj->addPerParticleParameter("epsilon");
-	lj->setNonbondedMethod(OpenMM::CustomNonbondedForce::NonbondedMethod::CutoffPeriodic);
-	for(int i = 0; i < AMOUNT; i++) {
-		sys->addParticle(1);
-		lj->addParticle(vector<double>{1, 1});
-	}
-	sys->addForce(lj);
+	for(int i = 0; i < AMOUNT; i++) sys->addParticle(M);
+
+	klj = new OpenMM::NonbondedForce();
+	klj->setNonbondedMethod(OpenMM::NonbondedForce::NonbondedMethod::CutoffPeriodic);
+	for(int i = 0; i < AMOUNT; i++) klj->addParticle(0, 1, 1);
+	sys->addForce(klj);
 	
+	/*
+	lj = new OpenMM::CustomNonbondedForce(
+		"4*epsilon*((sigma/r)^12-(sigma/r)^6)");
+	lj->addGlobalParameter("sigma", 1);
+	lj->addGlobalParameter("epsilon", 1);
+	lj->setNonbondedMethod(OpenMM::CustomNonbondedForce::NonbondedMethod::CutoffPeriodic);
+	for(int i = 0; i < AMOUNT; i++) lj->addParticle();
+	sys->addForce(lj);
+	*/
+
+
+	eam = new OpenMM::CustomGBForce();
+	eam->addGlobalParameter("A", A);
+	eam->addGlobalParameter("beta", BETA);
+	eam->addGlobalParameter("Z0", Z0);
+	eam->addComputedValue("rho", "exp(-beta*(r-1))/Z0", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
+	eam->addComputedValue("F", "A*Z0/2*rho*(log(rho)-1)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+	eam->addEnergyTerm("F", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+	eam->addEnergyTerm("-A/Z0*exp(-beta*(r-1))*(-beta*(r-1)-1)", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
+	eam->setNonbondedMethod(OpenMM::CustomGBForce::CutoffPeriodic);
+	for(int i = 0; i < AMOUNT; i++) eam->addParticle();
+	sys->addForce(eam);
+
 	verlet = new OpenMM::VerletIntegrator(TIME_STEP);
-	context = new OpenMM::Context(*sys, *verlet);
+
+	OpenMM::Platform::loadPluginsFromDirectory(OpenMM::Platform::getDefaultPluginsDirectory());
+	context = new OpenMM::Context(*sys, *verlet,
+		OpenMM::Platform::getPlatformByName("CUDA"),
+		map<string, string> {{"Precision", "mixed"}});
 	context->setPeriodicBoxVectors(
 		OpenMM::Vec3(SIZE, 0, 0),
 		OpenMM::Vec3(0, SIZE, 0),
 		OpenMM::Vec3(0, 0, SIZE));
+
+	printf( "Using OpenMM platform %s\n", 
+        context->getPlatform().getName().c_str() );
 }
 
 

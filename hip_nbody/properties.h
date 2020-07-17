@@ -44,15 +44,15 @@ constexpr double PI = 3.1415926535897932;
 
 constexpr double RC = _sqrt(_cbrt(2));
 
-constexpr double T = 0.1 / _cbrt(2);
-constexpr double N = 0.77 * _sqrt(2);
+constexpr double T = 10 / _cbrt(2);
+constexpr double N = 1.0 * _sqrt(2);
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
 
 constexpr const char* OUTPUT_FILENAME = "data/FCC_LJ.xyz";
-constexpr double TIME_STEP = 1e-3;
-constexpr int SKIPS = 10;
+constexpr double TIME_STEP = 1e-5;
+constexpr int SKIPS = 100;
 constexpr int NSTEPS = -1;
 constexpr double Z0 = 12;
 constexpr double BETA = 2, A = .5;
@@ -62,8 +62,3 @@ constexpr double M = 1;
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y = 1, Z = 2};
-enum ELEMS {LJ_PARTICLE, ERROR};
-
-constexpr int ELEMS_NUM = 1;
-constexpr double ELEMS_DIVISIONS[ELEMS_NUM + 1] = { 0, 1 };
-constexpr ELEMS ELEMS_TYPES[ELEMS_NUM] = {LJ_PARTICLE};
