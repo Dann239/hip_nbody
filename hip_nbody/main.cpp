@@ -228,6 +228,22 @@ void output_cout(const vector<compute*>& to_cout) {
 	}
 }
 
+void lmp_dump(string name) {
+	ofstream out(name);
+	out << AMOUNT << " atoms" << endl;
+	out << 1 << " atom types" << endl;
+	out << 0 << " " << SIZE << " xlo xhi" << endl;
+	out << 0 << " " << SIZE << " ylo yhi" << endl;
+	out << 0 << " " << SIZE << " zlo zhi" << endl;
+
+	out << "Masses" << endl;
+	out << 1 << " " << M << endl;
+
+	out << "Atoms" << endl;
+	for(int i = 0; i < AMOUNT; i++)
+		out << i + 1 << " " << 1 << " " << deflect(pos[X][i]) << " " << deflect(pos[Y][i]) << " " << deflect(pos[Z][i]) << endl;
+}
+
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
 
@@ -287,7 +303,6 @@ int main(int argc, char* argv[], char* envp[]) {
 		cout << endl;
 	}
 	window_delete();
-	dump("fcc.dump", AMOUNT - 1);
-
+	lmp_dump("dump.lmp");
 	return 0;
 }

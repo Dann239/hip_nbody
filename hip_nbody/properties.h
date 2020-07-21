@@ -45,7 +45,7 @@ constexpr double PI = 3.1415926535897932;
 constexpr double RC = _sqrt(_cbrt(2));
 
 constexpr double T = 10 / _cbrt(2);
-constexpr double N = 1.0 * _sqrt(2);
+constexpr double N = 0.5 * _sqrt(2);
 
 constexpr double V = AMOUNT / N;
 constexpr double SIZE = _cbrt(V);
@@ -53,7 +53,7 @@ constexpr double SIZE = _cbrt(V);
 constexpr const char* OUTPUT_FILENAME = "data/FCC_LJ.xyz";
 constexpr double TIME_STEP = 1e-5;
 constexpr int SKIPS = 100;
-constexpr int NSTEPS = -1;
+constexpr int NSTEPS = 1000;
 constexpr double Z0 = 12;
 constexpr double BETA = 2, A = .5;
 constexpr double M = 1;
