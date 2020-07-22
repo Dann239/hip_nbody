@@ -56,7 +56,7 @@ constexpr int SKIPS = 100;
 constexpr int NSTEPS = 1000;
 constexpr double Z0 = 12;
 constexpr double BETA = 2, A = .5;
-constexpr double M = 1;
+extern double M;
 
 
 constexpr int MEM_LEN = AMOUNT * sizeof(double);
