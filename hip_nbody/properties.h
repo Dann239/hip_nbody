@@ -1,11 +1,6 @@
 #pragma once
 
-//#define ENABLE_LJ
-#define ENABLE_PB
-//#define ENABLE_EAM
-//#define ENABLE_SC
-
-constexpr int AMOUNT = 2048; //2047 == 23 * 89
+constexpr int AMOUNT = 500; //2047 == 23 * 89
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
@@ -42,23 +37,11 @@ constexpr double _sqrt(double a) {
 
 constexpr double PI = 3.1415926535897932;
 
-constexpr double RC = _sqrt(_cbrt(2));
+extern double SIZE[3];
 
-constexpr double T = 10 / _cbrt(2);
-constexpr double N = 0.5 * _sqrt(2);
-
-constexpr double V = AMOUNT / N;
-constexpr double SIZE = _cbrt(V);
-
-constexpr const char* OUTPUT_FILENAME = "data/FCC_LJ.xyz";
-constexpr double TIME_STEP = 1e-5;
+constexpr double TIME_STEP = 1e-6;
 constexpr int SKIPS = 100;
-constexpr int NSTEPS = 1000;
-constexpr double Z0 = 12;
-constexpr double BETA = 2, A = .5;
+constexpr int NSTEPS = 0;
 extern double M;
-
-
-constexpr int MEM_LEN = AMOUNT * sizeof(double);
 
 enum XYZ {X = 0, Y = 1, Z = 2};

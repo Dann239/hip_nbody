@@ -27,9 +27,65 @@ double M = 1;
 constexpr double E = 1.602176634e-19;
 constexpr double NA = 6.02214076e23;
 constexpr double kJmol_per_eV = E * NA * 1e-3;
-constexpr double BOHR = 5.29177210903e-11 * 1e9;
-constexpr double HARTREE = 4.3597447222071e-18 * 1e-3 * NA;
+//constexpr double BOHR = 5.29177210903e-11 * 1e9;
+//constexpr double HARTREE = 4.3597447222071e-18 * 1e-3 * NA;
+constexpr double BOHR = 0.529 * 0.1;
+constexpr double HARTREE = 27.2 * kJmol_per_eV;
 using func1D = OpenMM::Continuous1DFunction;
+
+double deflect(double p, double SIZE);
+void lmp_dump(string name) {
+	ofstream out(name);
+	out << endl;
+	out << AMOUNT << " atoms" << endl;
+	out << 1 << " atom types" << endl;
+	out << 0 << " " << SIZE[X] * OpenMM::AngstromsPerNm << " xlo xhi" << endl;
+	out << 0 << " " << SIZE[Y] * OpenMM::AngstromsPerNm << " ylo yhi" << endl;
+	out << 0 << " " << SIZE[Z] * OpenMM::AngstromsPerNm << " zlo zhi" << endl;
+
+	out << endl << "Atoms" << endl << endl;
+	for(int i = 0; i < AMOUNT; i++)
+		out << i + 1 << " " << 1 << " " 
+			<< deflect(pos[X][i], SIZE[X]) * OpenMM::AngstromsPerNm << " "
+			<< deflect(pos[Y][i], SIZE[Y]) * OpenMM::AngstromsPerNm << " "
+			<< deflect(pos[Z][i], SIZE[Z]) * OpenMM::AngstromsPerNm << endl;
+}
+void forces_dump(string name) {
+	ofstream out(name);
+	for(int i = 0; i < AMOUNT; i++)
+		out << i + 1 << ' ' 
+		<< acc[X][i] / kJmol_per_eV / OpenMM::AngstromsPerNm << ' ' 
+		<< acc[Y][i] / kJmol_per_eV / OpenMM::AngstromsPerNm << ' ' 
+		<< acc[Z][i] / kJmol_per_eV / OpenMM::AngstromsPerNm << endl;
+}
+void load_atom(string name) {
+	ifstream in(name);
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	int amount;
+	in >> amount;
+	if(amount != AMOUNT) {
+		cerr << "WRONG AMOUNT SET!!!" << endl;
+		return;
+	}
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	double low[3], high[3];
+	for(int i = 0; i < 3; i++) in >> low[i] >> high[i];
+	for(int i = 0; i < 3; i++) SIZE[i] = (high[i] - low[i]) * OpenMM::NmPerAngstrom;
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	for(int i = 0; i < AMOUNT; i++) {
+		int n, t;
+		double p[3];
+		in >> n >> t;
+		for(int j = 0; j < 3; j++) in >> p[j];
+		for(int j = 0; j < 3; j++) pos[j][n - 1] = SIZE[j] * p[j];
+
+		for(int j = 0; j < 3; j++) vel[j][n - 1] = 0;
+	}
+}
 
 tuple<func1D*, func1D*, func1D*> read_EAM_file(string filename, double& M, double& cutoff) {
 	ifstream in(filename);
@@ -44,7 +100,6 @@ tuple<func1D*, func1D*, func1D*> read_EAM_file(string filename, double& M, doubl
 	for(int i = 0; i < Nr; i++) in >> Z_values[i];
 	for(int i = 0; i < Nr; i++) in >> rho_values[i];
 	in.close();
-
 	dr *= OpenMM::NmPerAngstrom;
 	cutoff *= OpenMM::NmPerAngstrom;
 	for(int i = 0; i < Nrho; i++) F_values[i] *= kJmol_per_eV;
@@ -62,11 +117,14 @@ void alloc() {
 		vel[i] = new double[AMOUNT];
 		acc[i] = new double[AMOUNT];
 	}
+}
+
+void init() {
 	sys = new OpenMM::System();
 	sys->setDefaultPeriodicBoxVectors(
-		OpenMM::Vec3(SIZE, 0, 0),
-		OpenMM::Vec3(0, SIZE, 0),
-		OpenMM::Vec3(0, 0, SIZE));
+		OpenMM::Vec3(SIZE[X], 0, 0),
+		OpenMM::Vec3(0, SIZE[Y], 0),
+		OpenMM::Vec3(0, 0, SIZE[Z]));
 
 	for(int i = 0; i < AMOUNT; i++) sys->addParticle(M);
 	
@@ -84,7 +142,7 @@ void alloc() {
 	eam->addTabulatedFunction("rho_f", rho);
 	eam->addComputedValue("rho", "rho_f(r)", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
 	eam->addEnergyTerm("F(rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
-	eam->addEnergyTerm("Z(r)^2", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
+	eam->addEnergyTerm("Z(r)*Z(r)/r", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
 	eam->setCutoffDistance(cutoff);
 	for(int i = 0; i < AMOUNT; i++) eam->addParticle();
 	sys->addForce(eam);
@@ -108,7 +166,7 @@ void pull_values() {
 		for(int j = 0; j < 3; j++) {
 			pos[j][i] = omm_pos[i][j];
 			vel[j][i] = omm_vel[i][j];
-			acc[j][i] = omm_acc[i][j] / M;
+			acc[j][i] = omm_acc[i][j];
 			enrg[i] = omm_enrg / AMOUNT;
 			viri[i] = 0;
 		}
@@ -122,7 +180,7 @@ void push_values() {
 			omm_vel[i][j] = vel[j][i];
 		}
 	context->setPositions(omm_pos);
-	context->setVelocities(omm_vel);
+	context->setVelocitiesToTemperature(300);
 }
 
 double total_time = 0;

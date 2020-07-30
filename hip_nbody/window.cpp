@@ -14,12 +14,12 @@ void window_init() {
 	ContextSettings settings;
 	window = new RenderWindow;
 	settings.antialiasingLevel = 8;
-	window->create(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "Runge CUDA", sf::Style::Default, settings);
+	window->create(sf::VideoMode(SCREEN_SIZE[0], SCREEN_SIZE[1]), "Runge CUDA", sf::Style::Default, settings);
 	//window->setFramerateLimit(120);
 }
 void window_show() {
 	window->display();
-	window->setSize(Vector2u(SCREEN_SIZE, SCREEN_SIZE));
+	window->setSize(Vector2u(SCREEN_SIZE[0], SCREEN_SIZE[1]));
 	window->clear();
 
 	static queue<Event> events;
@@ -46,7 +46,7 @@ void window_delete() {
 }
 void window_draw_point(double x, double y, unsigned int colour) {
 
-	const float r = SCREEN_SIZE * 4e-3f;
+	const float r = SCREEN_SIZE[0] * 4e-3f;
 	static CircleShape point;
 	point.setRadius(r);
 	point.setPointCount(8);

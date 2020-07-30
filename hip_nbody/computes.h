@@ -55,23 +55,6 @@ public:
 	double calculate() override;
 };
 
-class temperature_pressure : public compute {
-public:
-	temperature_pressure();
-	double calculate() override;
-};
-
-class virial_pressure : public total {
-public:
-	virial_pressure();
-};
-
-class total_pressure : public compute {
-public:
-	total_pressure();
-	double calculate() override;
-};
-
 class elapsed_time : public compute {
 public:
 	elapsed_time();

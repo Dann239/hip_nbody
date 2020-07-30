@@ -14,6 +14,8 @@
 #include <string>
 using namespace std;
 
+double SIZE[3] = {1, 1, 1};
+int SCREEN_SIZE[2] = {500, 500}; 
 
 double uniform_rand() {
 	return (double)rand() / RAND_MAX;
@@ -53,118 +55,6 @@ double get_maxwell_speed(double T, double m = 1) {
 	return vel_new;
 }
 
-void apply_andersen_thermostat(double T, int n = 1) {
-	for(int i = 0; i < n; i++) {
-		int pnum = rand() % AMOUNT;
-		for(int j = 0; j < 3; j++)
-			vel[j][pnum] = get_maxwell_speed(T, M);
-	}
-	push_values();
-}
-
-double total_sc_thermostat_dE = 0;
-void apply_sc_thermostat() {
-	double T_current = (new temperature())->calculate();
-	double alpha = sqrt(T / T_current);
-
-	for(int pnum = 0; pnum < AMOUNT; pnum++)
-		for(int i = 0; i < 3; i++)
-			vel[i][pnum] *= alpha;
-
-	total_sc_thermostat_dE += (T - T_current) / ((2. / 3.) * _cbrt(2));
-	push_values();
-}
-
-bool randomize_lattice(vector<array<double,3> > vecs) {
-	int step_count = round(cbrt(AMOUNT / vecs.size()));
-	if(vecs.size() * pow(step_count, 3) != AMOUNT) {
-		cerr << "Invalid LATTICE_STEP_COUNT" << endl;
-		return false;
-	}
-	double cell_size = SIZE / step_count;
-
-
-	for (int i = 0; i < step_count; i++)
-		for (int j = 0; j < step_count; j++)
-			for (int k = 0; k < step_count; k++) {
-				int offset = vecs.size() * (k + j * step_count + i * step_count * step_count);
-
-				for (int dim = 0; dim < 3; dim++)
-					for (int num = 0; num < vecs.size(); num++)
-						vel[dim][offset + num] = get_maxwell_speed(T, M);
-
-				pos[X][offset] = cell_size * i;
-				pos[Y][offset] = cell_size * j;
-				pos[Z][offset] = cell_size * k;
-
-				for (int dim = 0; dim < 3; dim++)
-					for (int num = 0; num < vecs.size(); num++)
-						pos[dim][offset + num] = pos[dim][offset + 0] + cell_size * vecs[num][dim];
-			}
-
-	push_values();
-	return true;
-}
-
-bool randomize_fcc() {
-	return randomize_lattice(vector<array<double,3> >{
-		{0,  0,  0},
-		{.5, .5, 0},
-		{.5, 0, .5},
-		{0, .5, .5}});
-}
-
-bool randomize_bcc() {
-	return randomize_lattice(vector<array<double,3> >{
-		{0,  0,  0},
-		{.5, .5, .5}});
-}
-
-bool randomize_sc() {
-	return randomize_lattice(vector<array<double,3> >{
-		{0,  0,  0}});
-}
-
-bool randomize_dc() {
-	return randomize_lattice(vector<array<double,3> >{
-		{0,  0,  0},
-		{0,  .5,  .5},
-		{.5,  0,  .5},
-		{.5,  .5,  0},
-		{.75,  .75,  .75},
-		{.75,  .25,  .25},
-		{.25,  .75,  .25},
-		{.25,  .25,  .75}
-		});
-}
-
-void randomize_default() {
-	constexpr int grid_size = (int)(_cbrt(AMOUNT) + 1);
-	static bool grid[grid_size][grid_size][grid_size];
-	for (int i = 0; i < grid_size; i++)
-		for (int j = 0; j < grid_size; j++)
-			for (int k = 0; k < grid_size; k++)
-				grid[i][j][k] = false;
-
-	for (int i = 0; i < AMOUNT; i++) {
-		int grid_pos[3];
-		for (int j = 0; j < 3; j++) {
-			grid_pos[j] = rand() % grid_size;
-			pos[j][i] = (grid_pos[j] + (double)rand() / RAND_MAX / 2) * SIZE / grid_size;
-			vel[j][i] = get_maxwell_speed(T, M);
-		}
-
-		if (grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]]) {
-			i--;
-			continue;
-		}
-
-		grid[grid_pos[X]][grid_pos[Y]][grid_pos[Z]] = true;
-	}
-
-	push_values();
-}
-
 void dump(string filename, int amount = AMOUNT) {
 	pull_values();
 	ofstream out(filename, ios::binary);
@@ -187,7 +77,7 @@ void load(string filename) {
 	in.close();
 }
 
-double deflect(double p) {
+double deflect(double p, double SIZE) {
 	if (p < 0)
 		p += (trunc((-p) / SIZE) + 1) * SIZE;
 	if (p > SIZE)
@@ -227,31 +117,17 @@ void output_cout(const vector<compute*>& to_cout) {
 		to_cout[i]->output_cout();
 	}
 }
-
-void lmp_dump(string name) {
-	ofstream out(name);
-	out << AMOUNT << " atoms" << endl;
-	out << 1 << " atom types" << endl;
-	out << 0 << " " << SIZE << " xlo xhi" << endl;
-	out << 0 << " " << SIZE << " ylo yhi" << endl;
-	out << 0 << " " << SIZE << " zlo zhi" << endl;
-
-	out << "Masses" << endl;
-	out << 1 << " " << M << endl;
-
-	out << "Atoms" << endl;
-	for(int i = 0; i < AMOUNT; i++)
-		out << i + 1 << " " << 1 << " " << deflect(pos[X][i]) << " " << deflect(pos[Y][i]) << " " << deflect(pos[Z][i]) << endl;
-}
+void lmp_dump(string name);
+void load_atom(string name);
+void forces_dump(string name);
 
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
-
 	alloc();
-	//randomize_default();
-	if (!randomize_fcc())
-		return 0;
-	
+	load_atom("dump.atom");
+	SCREEN_SIZE[Y] = (int)(SCREEN_SIZE[X] * SIZE[Y] / SIZE[X]);
+	init();
+	push_values();
 	window_init();
 	pull_values();
 	signal(SIGINT, [](int sig) { interrupt = true; });
@@ -261,9 +137,9 @@ int main(int argc, char* argv[], char* envp[]) {
 		euler_steps(SKIPS);
 
 	#ifdef SFML_STATIC
-		constexpr double OUTPUT_COEFF = SCREEN_SIZE / SIZE;
+		double OUTPUT_COEFF = SCREEN_SIZE[X] / SIZE[X];
 		for (int j = 0; j < AMOUNT; j++)
-			window_draw_point(deflect(pos[X][j]) * OUTPUT_COEFF, deflect(pos[Y][j]) * OUTPUT_COEFF);
+			window_draw_point(deflect(pos[X][j], SIZE[X]) * OUTPUT_COEFF, deflect(pos[Y][j], SIZE[Y]) * OUTPUT_COEFF);
 		window_show();
 	#endif
 
@@ -295,14 +171,12 @@ int main(int argc, char* argv[], char* envp[]) {
 		
 		
 		pull_values();
-		#ifdef ENABLE_SC
-			apply_sc_thermostat();
-		#endif
 		//apply_andersen_thermostat(0.000);
 		//flops_output(t0);
 		cout << endl;
 	}
 	window_delete();
 	lmp_dump("dump.lmp");
+	forces_dump("omm.force");
 	return 0;
 }

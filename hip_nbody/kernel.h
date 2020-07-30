@@ -8,9 +8,9 @@ extern double* enrg;
 extern double* viri;
 
 extern double total_time;
-extern double total_sc_thermostat_dE;
 
 void alloc();
+void init();
 
 void pull_values();
 void push_values();
