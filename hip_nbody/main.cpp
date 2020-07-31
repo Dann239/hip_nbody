@@ -14,7 +14,7 @@
 #include <string>
 using namespace std;
 
-double SIZE[3] = {1, 1, 1};
+double SIZE[3] = {10, 10, 10};
 int SCREEN_SIZE[2] = {500, 500}; 
 
 double uniform_rand() {
@@ -124,9 +124,10 @@ void forces_dump(string name);
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
 	alloc();
-	load_atom("dump.atom");
+	//load_atom("dump.atom");
 	SCREEN_SIZE[Y] = (int)(SCREEN_SIZE[X] * SIZE[Y] / SIZE[X]);
 	init();
+	return 0;
 	push_values();
 	window_init();
 	pull_values();

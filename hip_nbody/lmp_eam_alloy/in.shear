@@ -1,0 +1,17 @@
+units		metal
+boundary	p p p
+
+atom_style	atomic
+read_data   Al2O3.lmp
+
+pair_style	eam/alloy
+pair_coeff  * * eam/alloy AlO.eam.alloy Al O
+
+velocity	all create 300.0 1
+
+dump dump1 all atom 1000 lmp.atom
+dump dump2 all custom 1000 lmp.force id fx fy fz
+
+timestep	0.001
+run 0
+

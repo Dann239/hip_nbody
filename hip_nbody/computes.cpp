@@ -32,14 +32,9 @@ double total::calculate() {
 potential_energy::potential_energy() : average(enrg), compute("Ep = ", 1, "; ") {}
 
 kinetic_energy::kinetic_energy() : compute("Ek = ", 1, "; ") {}
+extern double kenergy;
 double kinetic_energy::calculate() {
-	value = 0;
-	for (int i = 0; i < AMOUNT; i++)
-		value += M * (
-			vel[X][i] * vel[X][i] +
-			vel[Y][i] * vel[Y][i] +
-			vel[Z][i] * vel[Z][i]) / 2. / AMOUNT;
-	return value;
+	return kenergy;
 }
 
 total_energy::total_energy() : compute("E = ", 1, "; ", 6) {}

@@ -16,14 +16,12 @@ double** acc = new double*[3];
 
 double* enrg = new double[AMOUNT];
 double* viri = new double[AMOUNT];
+double* types = new double[AMOUNT];
 
-OpenMM::Context* context;
-OpenMM::VerletIntegrator* verlet;
 OpenMM::System* sys;
-OpenMM::NonbondedForce* klj;
-OpenMM::CustomNonbondedForce* lj;
-OpenMM::CustomGBForce* eam;
-double M = 1;
+OpenMM::VerletIntegrator* verlet;
+OpenMM::Context* context;
+
 constexpr double E = 1.602176634e-19;
 constexpr double NA = 6.02214076e23;
 constexpr double kJmol_per_eV = E * NA * 1e-3;
@@ -32,20 +30,22 @@ constexpr double kJmol_per_eV = E * NA * 1e-3;
 constexpr double BOHR = 0.529 * 0.1;
 constexpr double HARTREE = 27.2 * kJmol_per_eV;
 using func1D = OpenMM::Continuous1DFunction;
+using func2D = OpenMM::Continuous2DFunction;
+using func3D = OpenMM::Continuous3DFunction;
 
 double deflect(double p, double SIZE);
 void lmp_dump(string name) {
 	ofstream out(name);
 	out << endl;
 	out << AMOUNT << " atoms" << endl;
-	out << 1 << " atom types" << endl;
+	out << 2 << " atom types" << endl;
 	out << 0 << " " << SIZE[X] * OpenMM::AngstromsPerNm << " xlo xhi" << endl;
 	out << 0 << " " << SIZE[Y] * OpenMM::AngstromsPerNm << " ylo yhi" << endl;
 	out << 0 << " " << SIZE[Z] * OpenMM::AngstromsPerNm << " zlo zhi" << endl;
 
 	out << endl << "Atoms" << endl << endl;
 	for(int i = 0; i < AMOUNT; i++)
-		out << i + 1 << " " << 1 << " " 
+		out << i + 1 << " " << types[i] << " " 
 			<< deflect(pos[X][i], SIZE[X]) * OpenMM::AngstromsPerNm << " "
 			<< deflect(pos[Y][i], SIZE[Y]) * OpenMM::AngstromsPerNm << " "
 			<< deflect(pos[Z][i], SIZE[Z]) * OpenMM::AngstromsPerNm << endl;
@@ -80,35 +80,131 @@ void load_atom(string name) {
 		int n, t;
 		double p[3];
 		in >> n >> t;
+		types[n - 1] = t;
 		for(int j = 0; j < 3; j++) in >> p[j];
 		for(int j = 0; j < 3; j++) pos[j][n - 1] = SIZE[j] * p[j];
-
 		for(int j = 0; j < 3; j++) vel[j][n - 1] = 0;
 	}
 }
-
-tuple<func1D*, func1D*, func1D*> read_EAM_file(string filename, double& M, double& cutoff) {
+OpenMM::CustomGBForce* read_EAM_file(string filename, double& M) {
 	ifstream in(filename);
 	in.ignore(0xFFFF, '\n');
 	string dummy;
 	in >> dummy >> M >> dummy >> dummy;
 	int Nrho, Nr;
-	double drho, dr;
+	double drho, dr, cutoff;
 	in >> Nrho >> drho >> Nr >> dr >> cutoff;
 	vector<double> F_values(Nrho), Z_values(Nr), rho_values(Nr);
 	for(int i = 0; i < Nrho; i++) in >> F_values[i];
 	for(int i = 0; i < Nr; i++) in >> Z_values[i];
 	for(int i = 0; i < Nr; i++) in >> rho_values[i];
 	in.close();
+
 	dr *= OpenMM::NmPerAngstrom;
 	cutoff *= OpenMM::NmPerAngstrom;
 	for(int i = 0; i < Nrho; i++) F_values[i] *= kJmol_per_eV;
 	for(int i = 0; i < Nr; i++) Z_values[i] *= _sqrt(HARTREE * BOHR);
 
-	return make_tuple(
-		new func1D(F_values, 0, drho*(Nrho - 1)),
-		new func1D(Z_values, 0, dr*(Nr - 1)),
-		new func1D(rho_values, 0, dr*(Nr - 1)));
+	func1D* F = new func1D(F_values, 0, drho*(Nrho - 1));
+	func1D* Z = new func1D(Z_values, 0, dr*(Nr - 1));
+	func1D* rho = new func1D(rho_values, 0, dr*(Nr - 1));
+
+	auto eam = new OpenMM::CustomGBForce();
+
+	eam->setNonbondedMethod(OpenMM::CustomGBForce::CutoffPeriodic);
+	eam->setCutoffDistance(cutoff);
+
+	eam->addTabulatedFunction("F", F);
+	eam->addTabulatedFunction("Z", Z);
+	eam->addTabulatedFunction("rho_f", rho);
+
+	eam->addComputedValue("rho", "rho_f(r)", OpenMM::CustomGBForce::ComputationType::ParticlePair);
+	eam->addEnergyTerm("F(rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+	eam->addEnergyTerm("Z(r)*Z(r)/r", OpenMM::CustomGBForce::ComputationType::ParticlePair);
+
+	return eam;
+}
+OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M) {
+	cout << "hello\n";
+	ifstream in(filename);
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	in.ignore(0xFFFF, '\n');
+	string dummy;
+	int n_elements;
+	in >> n_elements;
+	for(int i = 0; i < n_elements; i++) in >> dummy;
+
+	int Nrho, Nr;
+	double drho, dr, cutoff;
+	in >> Nrho >> drho >> Nr >> dr >> cutoff;
+	vector<vector<double> > F_values(n_elements, vector<double>(Nrho));
+	vector<vector<double> > rho_values(n_elements, vector<double>(Nr));
+	for(int i = 0; i < n_elements; i++) {
+		in >> dummy >> M[i] >> dummy >> dummy;
+		for(int j = 0; j < Nrho; j++) in >> F_values[i][j];
+		for(int j = 0; j < Nr; j++) in >> rho_values[i][j];
+	}
+	cout << "bruh\n";
+	vector<vector<vector<double>>> phi_values(n_elements,vector<vector<double>>(n_elements,vector<double>(Nr)));
+	for(int i = 0; i < n_elements; i++)
+		for(int j = 0; j <= i; j++)
+			for(int k = 0; k < Nr; k++) {
+				in >> phi_values[i][j][k];
+				phi_values[j][i][k] = phi_values[i][j][k];
+			}
+	in.close();
+	cout << "ouch\n";
+		
+	dr *= OpenMM::NmPerAngstrom;
+	cutoff *= OpenMM::NmPerAngstrom;
+	for(int i = 0; i < n_elements; i++)
+		for(int j = 0; j < Nrho; j++)
+			F_values[i][j] *= kJmol_per_eV;
+	
+	cout << "ew\n";
+
+	for(int i = 0; i < n_elements; i++)
+		for(int j = 0; j < n_elements; j++)
+			for(int k = 0; k < Nr; k++)
+				phi_values[i][j][k] *= kJmol_per_eV * OpenMM::NmPerAngstrom;
+
+	cout << "hey\n";
+
+	vector<double> F_values_flat(n_elements * Nrho);	
+	vector<double> rho_values_flat(n_elements * Nr);	
+	vector<double> phi_values_flat(n_elements * n_elements * Nr);
+	cout << "uhm\n";
+	for(int i = 0; i < n_elements; i++) {
+		for(int j = 0; j < Nrho; j++)
+			F_values_flat[i + n_elements*j] = F_values[i][j];
+		for(int j = 0; j < Nr; j++)
+			rho_values_flat[i + n_elements*j] = rho_values[i][j];
+		for(int j = 0; j < n_elements; j++)
+			for(int k = 0; k < Nr; k++)
+				phi_values_flat[i + n_elements*j + n_elements*n_elements*k] = phi_values[i][j][k];
+	}
+	cout << "kek\n";
+	func2D* F = new func2D(n_elements, Nrho, F_values_flat, 1, n_elements, 0, drho*(Nrho - 1));
+	func2D* rho = new func2D(n_elements, Nr, F_values_flat, 1, n_elements, 0, dr*(Nr - 1));
+	func3D* phi = new func3D(n_elements, n_elements, Nr, phi_values_flat, 1, n_elements, 1, n_elements, 0, dr*(Nr - 1));
+
+	auto eam = new OpenMM::CustomGBForce();
+
+	eam->setNonbondedMethod(OpenMM::CustomGBForce::CutoffPeriodic);
+	eam->setCutoffDistance(cutoff);
+	eam->addPerParticleParameter("type");
+
+	eam->addTabulatedFunction("F", F);
+	eam->addTabulatedFunction("rho_f", rho);
+	eam->addTabulatedFunction("phi", phi);
+
+	eam->addComputedValue("rho", "rho_f(type2, r)", OpenMM::CustomGBForce::ComputationType::ParticlePair);
+	eam->addEnergyTerm("F(type, rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+	eam->addEnergyTerm("phi(type1, type2, r)/r", OpenMM::CustomGBForce::ParticlePair);
+
+	cout << "bye\n";
+	return eam;
 }
 
 void alloc() {
@@ -125,26 +221,10 @@ void init() {
 		OpenMM::Vec3(SIZE[X], 0, 0),
 		OpenMM::Vec3(0, SIZE[Y], 0),
 		OpenMM::Vec3(0, 0, SIZE[Z]));
-
-	for(int i = 0; i < AMOUNT; i++) sys->addParticle(M);
-	
-	//CustomGBForce + Continuous1DFunction
-	//lammps eam setfl
-
-	double cutoff;
-	func1D *F, *Z, *rho;
-	tie(F, Z, rho) = read_EAM_file("Ni_u3.eam", M, cutoff);
-	
-	eam = new OpenMM::CustomGBForce();
-	eam->setNonbondedMethod(OpenMM::CustomGBForce::CutoffPeriodic);
-	eam->addTabulatedFunction("F", F);
-	eam->addTabulatedFunction("Z", Z);
-	eam->addTabulatedFunction("rho_f", rho);
-	eam->addComputedValue("rho", "rho_f(r)", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
-	eam->addEnergyTerm("F(rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
-	eam->addEnergyTerm("Z(r)*Z(r)/r", OpenMM::CustomGBForce::ComputationType::ParticlePairNoExclusions);
-	eam->setCutoffDistance(cutoff);
-	for(int i = 0; i < AMOUNT; i++) eam->addParticle();
+	vector<double> M(2);
+	auto eam = read_EAM_ALLOY_file("AlO.eam.alloy", M);
+	for(int i = 0; i < AMOUNT; i++) sys->addParticle(M[types[i]]);
+	for(int i = 0; i < AMOUNT; i++) eam->addParticle({types[i]});
 	sys->addForce(eam);
 	verlet = new OpenMM::VerletIntegrator(TIME_STEP);
 
@@ -155,12 +235,13 @@ void init() {
 	cout << "Using OpenMM platform " << context->getPlatform().getName().c_str() << endl;
 }
 
-
+double kenergy;
 void pull_values() {
 	auto state = context->getState(OpenMM::State::Positions | OpenMM::State::Velocities | OpenMM::State::Energy | OpenMM::State::Forces | OpenMM::State::Parameters);
 	auto omm_pos = state.getPositions();
 	auto omm_vel = state.getVelocities();
 	auto omm_enrg = state.getPotentialEnergy();
+	kenergy = state.getKineticEnergy();
 	auto omm_acc = state.getForces();
 	for(int i = 0; i < AMOUNT; i++) 
 		for(int j = 0; j < 3; j++) {
