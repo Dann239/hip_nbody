@@ -36,6 +36,7 @@ using func3D = OpenMM::Continuous3DFunction;
 double deflect(double p, double SIZE);
 void lmp_dump(string name) {
 	ofstream out(name);
+	if(out.fail()) throw runtime_error("Cannot open .lmp file to write");
 	out << endl;
 	out << AMOUNT << " atoms" << endl;
 	out << 2 << " atom types" << endl;
@@ -60,15 +61,13 @@ void forces_dump(string name) {
 }
 void load_atom(string name) {
 	ifstream in(name);
+	if(in.fail()) throw runtime_error("Cannot open .atom file");
 	in.ignore(0xFFFF, '\n');
 	in.ignore(0xFFFF, '\n');
 	in.ignore(0xFFFF, '\n');
 	int amount;
 	in >> amount;
-	if(amount != AMOUNT) {
-		cerr << "WRONG AMOUNT SET!!!" << endl;
-		return;
-	}
+	if(amount != AMOUNT) throw runtime_error("Amount in .atom file doesn't match the AMOUNT value");
 	in.ignore(0xFFFF, '\n');
 	in.ignore(0xFFFF, '\n');
 	double low[3], high[3];
@@ -80,7 +79,7 @@ void load_atom(string name) {
 		int n, t;
 		double p[3];
 		in >> n >> t;
-		types[n - 1] = t;
+		types[n - 1] = t - 1;
 		for(int j = 0; j < 3; j++) in >> p[j];
 		for(int j = 0; j < 3; j++) pos[j][n - 1] = SIZE[j] * p[j];
 		for(int j = 0; j < 3; j++) vel[j][n - 1] = 0;
@@ -88,6 +87,7 @@ void load_atom(string name) {
 }
 OpenMM::CustomGBForce* read_EAM_file(string filename, double& M) {
 	ifstream in(filename);
+	if(in.fail()) throw runtime_error("Cannot open .eam file");
 	in.ignore(0xFFFF, '\n');
 	string dummy;
 	in >> dummy >> M >> dummy >> dummy;
@@ -124,16 +124,19 @@ OpenMM::CustomGBForce* read_EAM_file(string filename, double& M) {
 
 	return eam;
 }
-OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M) {
-	cout << "hello\n";
+
+OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M, string select_one_elem = "none") {
 	ifstream in(filename);
+	if(in.fail()) throw runtime_error("Cannot open .eam.alloy file");
 	in.ignore(0xFFFF, '\n');
 	in.ignore(0xFFFF, '\n');
 	in.ignore(0xFFFF, '\n');
-	string dummy;
 	int n_elements;
 	in >> n_elements;
-	for(int i = 0; i < n_elements; i++) in >> dummy;
+	M.resize(n_elements);
+	string dummy[n_elements][3];
+	string elems[n_elements];
+	for(int i = 0; i < n_elements; i++) in >> elems[i];
 
 	int Nrho, Nr;
 	double drho, dr, cutoff;
@@ -141,11 +144,10 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M) {
 	vector<vector<double> > F_values(n_elements, vector<double>(Nrho));
 	vector<vector<double> > rho_values(n_elements, vector<double>(Nr));
 	for(int i = 0; i < n_elements; i++) {
-		in >> dummy >> M[i] >> dummy >> dummy;
+		in >> dummy[i][0] >> M[i] >> dummy[i][1] >> dummy[i][2];
 		for(int j = 0; j < Nrho; j++) in >> F_values[i][j];
 		for(int j = 0; j < Nr; j++) in >> rho_values[i][j];
 	}
-	cout << "bruh\n";
 	vector<vector<vector<double>>> phi_values(n_elements,vector<vector<double>>(n_elements,vector<double>(Nr)));
 	for(int i = 0; i < n_elements; i++)
 		for(int j = 0; j <= i; j++)
@@ -154,7 +156,29 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M) {
 				phi_values[j][i][k] = phi_values[i][j][k];
 			}
 	in.close();
-	cout << "ouch\n";
+
+	/*//////////////////////////////////
+	ofstream out("AlO_own.eam.alloy");
+	out.precision(16);
+	out << scientific;
+
+	out << "own config of AlO setfl file" << endl << endl << endl;
+	out << n_elements << " ";
+	for(int i = 0; i < n_elements; i++)
+		out << elems[i] << " ";
+	out << endl;
+	out << Nrho << " " << drho << " " << Nr << " " << dr << " " << cutoff << endl;
+	for(int i = 0; i < n_elements; i++) {
+		out << dummy[i][0] << " " << M[i] << " " << dummy[i][1] << " " << dummy[i][2] << endl;
+		for(int j = 0; j < Nrho; j++) out << F_values[i][j] << endl;
+		for(int j = 0; j < Nr; j++) out << rho_values[i][j] << endl;
+	}
+	for(int i = 0; i < n_elements; i++)
+		for(int j = 0; j <= i; j++)
+			for(int k = 0; k < Nr; k++)
+				out << 0 << endl;//phi_values[i][j][k] << endl;
+	out.close();
+	*////////////////////////////////////
 		
 	dr *= OpenMM::NmPerAngstrom;
 	cutoff *= OpenMM::NmPerAngstrom;
@@ -162,48 +186,62 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M) {
 		for(int j = 0; j < Nrho; j++)
 			F_values[i][j] *= kJmol_per_eV;
 	
-	cout << "ew\n";
-
+	
 	for(int i = 0; i < n_elements; i++)
 		for(int j = 0; j < n_elements; j++)
 			for(int k = 0; k < Nr; k++)
 				phi_values[i][j][k] *= kJmol_per_eV * OpenMM::NmPerAngstrom;
 
-	cout << "hey\n";
-
-	vector<double> F_values_flat(n_elements * Nrho);	
-	vector<double> rho_values_flat(n_elements * Nr);	
-	vector<double> phi_values_flat(n_elements * n_elements * Nr);
-	cout << "uhm\n";
-	for(int i = 0; i < n_elements; i++) {
-		for(int j = 0; j < Nrho; j++)
-			F_values_flat[i + n_elements*j] = F_values[i][j];
-		for(int j = 0; j < Nr; j++)
-			rho_values_flat[i + n_elements*j] = rho_values[i][j];
-		for(int j = 0; j < n_elements; j++)
-			for(int k = 0; k < Nr; k++)
-				phi_values_flat[i + n_elements*j + n_elements*n_elements*k] = phi_values[i][j][k];
-	}
-	cout << "kek\n";
-	func2D* F = new func2D(n_elements, Nrho, F_values_flat, 1, n_elements, 0, drho*(Nrho - 1));
-	func2D* rho = new func2D(n_elements, Nr, F_values_flat, 1, n_elements, 0, dr*(Nr - 1));
-	func3D* phi = new func3D(n_elements, n_elements, Nr, phi_values_flat, 1, n_elements, 1, n_elements, 0, dr*(Nr - 1));
-
 	auto eam = new OpenMM::CustomGBForce();
-
 	eam->setNonbondedMethod(OpenMM::CustomGBForce::CutoffPeriodic);
 	eam->setCutoffDistance(cutoff);
-	eam->addPerParticleParameter("type");
 
-	eam->addTabulatedFunction("F", F);
-	eam->addTabulatedFunction("rho_f", rho);
-	eam->addTabulatedFunction("phi", phi);
+	if(select_one_elem == "none") {
+		vector<double> F_values_flat(n_elements * Nrho);	
+		vector<double> rho_values_flat(n_elements * Nr);	
+		vector<double> phi_values_flat(n_elements * n_elements * Nr);
+		for(int i = 0; i < n_elements; i++) {
+			for(int j = 0; j < Nrho; j++)
+				F_values_flat[i + n_elements*j] = F_values[i][j];
+			for(int j = 0; j < Nr; j++)
+				rho_values_flat[i + n_elements*j] = rho_values[i][j];
+			for(int j = 0; j < n_elements; j++)
+				for(int k = 0; k < Nr; k++)
+					phi_values_flat[i + n_elements*j + n_elements*n_elements*k] = phi_values[i][j][k];
+		}
+		func2D* F = new func2D(n_elements, Nrho, F_values_flat, 1, n_elements, 0, drho*(Nrho - 1));
+		func2D* rho = new func2D(n_elements, Nr, rho_values_flat, 1, n_elements, 0, dr*(Nr - 1));
+		func3D* phi = new func3D(n_elements, n_elements, Nr, phi_values_flat, 1, n_elements, 1, n_elements, 0, dr*(Nr - 1));
 
-	eam->addComputedValue("rho", "rho_f(type2, r)", OpenMM::CustomGBForce::ComputationType::ParticlePair);
-	eam->addEnergyTerm("F(type, rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
-	eam->addEnergyTerm("phi(type1, type2, r)/r", OpenMM::CustomGBForce::ParticlePair);
+		eam->addPerParticleParameter("type");
 
-	cout << "bye\n";
+		eam->addTabulatedFunction("F", F);
+		eam->addTabulatedFunction("rho_f", rho);
+		eam->addTabulatedFunction("phi", phi);
+
+		eam->addComputedValue("rho", "rho_f(type2, r)", OpenMM::CustomGBForce::ComputationType::ParticlePair);
+		eam->addEnergyTerm("F(type, rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+		eam->addEnergyTerm("phi(type1, type2, r)/r", OpenMM::CustomGBForce::ParticlePair);
+	}
+	else {
+		int desired_type = -1;
+		for(int i = 0; i < n_elements; i++)
+			if(elems[i] == select_one_elem)
+				desired_type = i;
+		if(desired_type == -1) throw runtime_error("Desired element not detected in .eam.alloy file");
+
+		func1D* F = new func1D(F_values[desired_type], 0, drho*(Nrho - 1));
+		func1D* rho = new func1D(rho_values[desired_type], 0, dr*(Nr - 1));
+		func1D* phi = new func1D(phi_values[desired_type][desired_type], 0, dr*(Nr - 1));
+
+		eam->addTabulatedFunction("F", F);
+		eam->addTabulatedFunction("rho_f", rho);
+		eam->addTabulatedFunction("phi", phi);
+
+		eam->addComputedValue("rho", "rho_f(r)", OpenMM::CustomGBForce::ComputationType::ParticlePair);
+		eam->addEnergyTerm("F(rho)", OpenMM::CustomGBForce::ComputationType::SingleParticle);
+		eam->addEnergyTerm("phi(r)/r", OpenMM::CustomGBForce::ParticlePair);
+	}
 	return eam;
 }
 
@@ -221,10 +259,11 @@ void init() {
 		OpenMM::Vec3(SIZE[X], 0, 0),
 		OpenMM::Vec3(0, SIZE[Y], 0),
 		OpenMM::Vec3(0, 0, SIZE[Z]));
-	vector<double> M(2);
-	auto eam = read_EAM_ALLOY_file("AlO.eam.alloy", M);
+	vector<double> M;
+	
+	auto eam = read_EAM_ALLOY_file("AlO.eam.alloy", M, "O");
 	for(int i = 0; i < AMOUNT; i++) sys->addParticle(M[types[i]]);
-	for(int i = 0; i < AMOUNT; i++) eam->addParticle({types[i]});
+	for(int i = 0; i < AMOUNT; i++) eam->addParticle();
 	sys->addForce(eam);
 	verlet = new OpenMM::VerletIntegrator(TIME_STEP);
 

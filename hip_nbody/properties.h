@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int AMOUNT = 500; //2047 == 23 * 89
+constexpr int AMOUNT = 10000; //2047 == 23 * 89
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
