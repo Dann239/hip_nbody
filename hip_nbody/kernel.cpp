@@ -134,8 +134,8 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M, s
 	int n_elements;
 	in >> n_elements;
 	M.resize(n_elements);
-	string dummy[n_elements][3];
-	string elems[n_elements];
+	vector<string> dummy(n_elements*3);
+	vector<string> elems(n_elements);
 	for(int i = 0; i < n_elements; i++) in >> elems[i];
 
 	int Nrho, Nr;
@@ -144,7 +144,7 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M, s
 	vector<vector<double> > F_values(n_elements, vector<double>(Nrho));
 	vector<vector<double> > rho_values(n_elements, vector<double>(Nr));
 	for(int i = 0; i < n_elements; i++) {
-		in >> dummy[i][0] >> M[i] >> dummy[i][1] >> dummy[i][2];
+		in >> dummy[i*n_elements + 0] >> M[i] >> dummy[i*n_elements + 1] >> dummy[i*n_elements + 2];
 		for(int j = 0; j < Nrho; j++) in >> F_values[i][j];
 		for(int j = 0; j < Nr; j++) in >> rho_values[i][j];
 	}
@@ -169,7 +169,7 @@ OpenMM::CustomGBForce* read_EAM_ALLOY_file(string filename, vector<double>& M, s
 	out << endl;
 	out << Nrho << " " << drho << " " << Nr << " " << dr << " " << cutoff << endl;
 	for(int i = 0; i < n_elements; i++) {
-		out << dummy[i][0] << " " << M[i] << " " << dummy[i][1] << " " << dummy[i][2] << endl;
+		out << dummy[i*n_elements + 0] << " " << M[i] << " " << dummy[i*n_elements + 1] << " " << dummy[i*n_elements + 2] << endl;
 		for(int j = 0; j < Nrho; j++) out << F_values[i][j] << endl;
 		for(int j = 0; j < Nr; j++) out << rho_values[i][j] << endl;
 	}
