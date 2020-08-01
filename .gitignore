@@ -339,6 +339,7 @@ hip_nbody/hip/*.cuh
 hip_nbody/data/*
 hip_nbody/hip/data/*
 
+OpenMM/
 SFML/
 *.run
 *.ptx
