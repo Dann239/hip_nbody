@@ -1,0 +1,22 @@
+units		metal
+boundary	p p p
+
+atom_style	atomic
+read_data   Fe_bcc.lmp
+
+pair_style	eam/alloy
+pair_coeff  * * Fe_2.eam.fs Fe
+
+fix         verle all nve
+velocity	all create 300 1
+
+dump dump0  all atom 1000 logs.atom
+
+timestep 0.0001
+thermo 1000
+run 10000
+
+dump dump1  all custom 1 lmp.custom id type xs ys zs vx vy vz
+dump dump2  all custom 1 lmp.force id fx fy fz
+dump_modify dump2 sort id
+run 0

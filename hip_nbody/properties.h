@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr int AMOUNT = 10000; //2047 == 23 * 89
+constexpr int AMOUNT = 2000;
 
 constexpr double _cbrt(double a) {
 	if (a < 0)
@@ -39,9 +39,9 @@ constexpr double PI = 3.1415926535897932;
 
 extern double SIZE[3];
 
-constexpr double TIME_STEP = 1e-6;
-constexpr int SKIPS = 100;
-constexpr int NSTEPS = 0;
+constexpr double TIME_STEP = 0.001;
+constexpr int SKIPS = 1000;
+constexpr int NSTEPS = 10;
 extern double M;
 
 enum XYZ {X = 0, Y = 1, Z = 2};

@@ -124,7 +124,7 @@ void forces_dump(string name);
 bool interrupt = false;
 int main(int argc, char* argv[], char* envp[]) {
 	alloc();
-	load_atom("lmp.atom");
+	load_atom("lmp.custom");
 	SCREEN_SIZE[Y] = (int)(SCREEN_SIZE[X] * SIZE[Y] / SIZE[X]);
 	init();
 	push_values();
